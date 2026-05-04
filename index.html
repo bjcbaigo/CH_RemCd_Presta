@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CHEMES · Panel CD Remitos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+
+:root {
+  --accent:      #29b8d8;
+  --accent-dim:  rgba(41,184,216,.15);
+  --green:  #22c55e;
+  --yellow: #f59e0b;
+  --red:    #ef4444;
+  --violet: #a78bfa;
+  --teal:   #14b8a6;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --font-body: 'DM Sans', system-ui, sans-serif;
+  --font-mono: 'DM Mono', monospace;
+}
+
+[data-theme="dark"] {
+  --bg:        #0d1117;
+  --surface:   #161b22;
+  --surface2:  #1c2230;
+  --border:    rgba(255,255,255,.08);
+  --text:      #e2e8f0;
+  --muted:     #64748b;
+  --row-hover: rgba(41,184,216,.06);
+  --shadow:    0 2px 12px rgba(0,0,0,.4);
+  --input-bg:  #0d1117;
+}
+
+[data-theme="light"] {
+  --bg:        #f0f4f8;
+  --surface:   #ffffff;
+  --surface2:  #f8fafc;
+  --border:    rgba(0,0,0,.09);
+  --text:      #1e293b;
+  --muted:     #64748b;
+  --row-hover: rgba(41,184,216,.05);
+  --shadow:    0 2px 12px rgba(0,0,0,.08);
+  --input-bg:  #ffffff;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: 13.5px;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  transition: background .2s, color .2s;
+}
+
+/* HEADER */
+header {
+  position: sticky; top: 0; z-index: 100;
+  height: 56px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center;
+  padding: 0 20px; gap: 14px;
+  box-shadow: var(--shadow);
+}
+
+.logo-wrap { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.logo-wrap img { height: 32px; width: 32px; object-fit: contain; }
+.logo-name { font-family: var(--font-mono); font-weight: 500; font-size: 14px; letter-spacing: .06em; color: var(--accent); }
+
+.hdr-divider { width: 1px; height: 28px; background: var(--border); flex-shrink: 0; }
+
+.hdr-titles { flex: 1; min-width: 0; }
+.hdr-titles h1 { font-size: 13.5px; font-weight: 500; letter-spacing: .02em; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hdr-titles .hdr-sub { font-size: 11px; color: var(--muted); font-weight: 300; }
+
+#lastUpdate { font-size: 11px; color: var(--muted); font-weight: 300; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 420px; }
+
+.theme-btn { flex-shrink: 0; background: none; border: 1px solid var(--border); color: var(--muted); border-radius: var(--radius-sm); padding: 4px 9px; cursor: pointer; font-size: 14px; line-height: 1; transition: color .15s, border-color .15s; }
+.theme-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+/* MAIN */
+main { padding: 18px 20px; }
+
+/* KPIS */
+.kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 16px; }
+
+.kpi {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 14px 16px 12px;
+  position: relative; overflow: hidden;
+  box-shadow: var(--shadow);
+}
+.kpi::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+.kpi.c-default::before { background: var(--accent); }
+.kpi.c-red::before     { background: var(--red); }
+.kpi.c-yellow::before  { background: var(--yellow); }
+.kpi.c-violet::before  { background: var(--violet); }
+.kpi.c-teal::before    { background: var(--teal); }
+
+.kpi-label { font-size: 10.5px; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.kpi-value { font-family: var(--font-mono); font-size: 26px; font-weight: 500; margin-top: 6px; line-height: 1; }
+
+.kpi.c-default .kpi-value { color: var(--accent); }
+.kpi.c-red     .kpi-value { color: var(--red); }
+.kpi.c-yellow  .kpi-value { color: var(--yellow); }
+.kpi.c-violet  .kpi-value { color: var(--violet); }
+.kpi.c-teal    .kpi-value { color: var(--teal); }
+
+/* TOOLBAR */
+.toolbar {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
+  padding: 10px 14px; margin-bottom: 12px;
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  box-shadow: var(--shadow);
+}
+
+input, select {
+  background: var(--input-bg); border: 1px solid var(--border); color: var(--text);
+  border-radius: var(--radius-sm); padding: 6px 10px;
+  font-family: var(--font-body); font-weight: 300; font-size: 13px;
+  outline: none; transition: border-color .15s;
+}
+input:focus, select:focus { border-color: var(--accent); }
+input#search { flex: 1; min-width: 260px; }
+select { padding-right: 28px; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 8px center;
+}
+
+button { cursor: pointer; font-family: var(--font-body); font-weight: 500; font-size: 13px; border-radius: var(--radius-sm); border: none; padding: 6px 14px; transition: opacity .15s, transform .1s; }
+button:active { transform: scale(.97); }
+.btn-primary { background: var(--accent); color: #0d1117; }
+.btn-primary:hover { opacity: .85; }
+.btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+.btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+/* TABLE */
+.table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: auto; box-shadow: var(--shadow); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead { position: sticky; top: 0; z-index: 10; }
+thead th { background: var(--surface2); color: var(--muted); font-weight: 500; font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+tbody tr { border-bottom: 1px solid var(--border); transition: background .12s; }
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: var(--row-hover); }
+td { padding: 9px 12px; vertical-align: middle; white-space: nowrap; }
+
+.cell-pedido { font-family: var(--font-mono); font-size: 12.5px; font-weight: 500; color: var(--accent); }
+.cell-ref    { font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin-top: 2px; }
+.cell-money  { font-family: var(--font-mono); font-size: 12.5px; color: var(--green); text-align: right; }
+.cell-muted  { color: var(--muted); font-size: 12px; }
+
+/* BADGES */
+.badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 20px; font-size: 10.5px; font-weight: 500; letter-spacing: .03em; white-space: nowrap; border: 1px solid transparent; }
+.badge::before { content: ''; display: inline-block; width: 5px; height: 5px; border-radius: 50%; }
+
+.badge.DEMORADO            { background: rgba(239,68,68,.12);  color: var(--red);    border-color: rgba(239,68,68,.3);  }
+.badge.DEMORADO::before    { background: var(--red); }
+.badge.ATENCION            { background: rgba(245,158,11,.12); color: var(--yellow); border-color: rgba(245,158,11,.3); }
+.badge.ATENCION::before    { background: var(--yellow); }
+.badge.OK                  { background: rgba(34,197,94,.12);  color: var(--green);  border-color: rgba(34,197,94,.3);  }
+.badge.OK::before          { background: var(--green); }
+.badge.estado              { background: rgba(100,116,139,.12); color: var(--muted);  border-color: rgba(100,116,139,.3); }
+.badge.estado::before      { background: var(--muted); }
+.badge.estado-prep         { background: rgba(167,139,250,.12); color: var(--violet); border-color: rgba(167,139,250,.3); }
+.badge.estado-prep::before { background: var(--violet); }
+.badge.estado-ok           { background: rgba(34,197,94,.12);   color: var(--green);  border-color: rgba(34,197,94,.3); }
+.badge.estado-ok::before   { background: var(--green); }
+.badge.estado-obs          { background: rgba(245,158,11,.12);  color: var(--yellow); border-color: rgba(245,158,11,.3); }
+.badge.estado-obs::before  { background: var(--yellow); }
+.badge.estado-listo        { background: rgba(20,184,166,.12);  color: var(--teal);   border-color: rgba(20,184,166,.3); }
+.badge.estado-listo::before{ background: var(--teal); }
+
+.btn-detail { background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(41,184,216,.3); padding: 4px 10px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 500; }
+.btn-detail:hover { background: rgba(41,184,216,.25); }
+
+/* MODAL */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55); backdrop-filter: blur(4px); z-index: 200; align-items: center; justify-content: center; padding: 20px; }
+.modal-overlay.open { display: flex; }
+
+.modal-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); width: 100%; max-width: 880px; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 24px 64px rgba(0,0,0,.5); animation: slideUp .18s ease; }
+@keyframes slideUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+
+.modal-header { display: flex; align-items: flex-start; justify-content: space-between; padding: 18px 20px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.modal-title { font-family: var(--font-mono); font-size: 16px; font-weight: 500; color: var(--accent); }
+.modal-sub   { font-size: 11.5px; color: var(--muted); margin-top: 3px; font-weight: 300; }
+.modal-close { background: none; border: none; color: var(--muted); font-size: 20px; padding: 0 4px; line-height: 1; cursor: pointer; transition: color .15s; }
+.modal-close:hover { color: var(--red); }
+
+.modal-body { padding: 18px 20px; overflow-y: auto; flex: 1; }
+
+.modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+
+.info-card { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 12px 14px; }
+.info-card h3 { font-size: 10.5px; font-weight: 500; text-transform: uppercase; letter-spacing: .07em; color: var(--accent); margin-bottom: 10px; }
+.field { font-size: 12.5px; margin-bottom: 5px; display: flex; gap: 6px; }
+.field b { color: var(--muted); font-weight: 500; flex-shrink: 0; min-width: 120px; }
+.note { font-size: 12.5px; font-style: italic; color: var(--muted); background: var(--bg); border-radius: var(--radius-sm); padding: 10px 12px; border: 1px solid var(--border); }
+
+/* TIMELINE */
+.timeline { padding: 14px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-md); }
+.timeline h3 { font-size: 10.5px; font-weight: 500; text-transform: uppercase; letter-spacing: .07em; color: var(--accent); margin-bottom: 14px; }
+.tl-items { display: flex; position: relative; }
+.tl-items::before { content: ''; position: absolute; top: 8px; left: 8px; right: 8px; height: 1px; background: var(--border); }
+.tl-item { flex: 1; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; position: relative; z-index: 1; }
+.dot { width: 16px; height: 16px; border-radius: 50%; background: var(--green); border: 2px solid var(--surface2); box-shadow: 0 0 0 2px var(--green); flex-shrink: 0; }
+.dot.wait  { background: var(--muted); box-shadow: 0 0 0 2px var(--muted); }
+.dot.alert { background: var(--red);   box-shadow: 0 0 0 2px var(--red); }
+.tl-label { font-size: 11px; font-weight: 500; line-height: 1.3; }
+.tl-sub   { font-size: 10.5px; color: var(--muted); font-weight: 300; }
+
+/* MODAL ACTIONS */
+.modal-actions { padding: 14px 20px; border-top: 1px solid var(--border); display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: end; flex-shrink: 0; }
+.modal-actions label { display: block; font-size: 10.5px; font-weight: 500; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 4px; }
+textarea { background: var(--input-bg); border: 1px solid var(--border); color: var(--text); border-radius: var(--radius-sm); padding: 7px 10px; font-family: var(--font-body); font-size: 12.5px; font-weight: 300; resize: vertical; min-height: 48px; width: 100%; outline: none; transition: border-color .15s; }
+textarea:focus { border-color: var(--accent); }
+
+.empty-row td { text-align: center; padding: 40px; color: var(--muted); font-size: 13px; }
+
+@media (max-width: 900px) {
+  .kpis { grid-template-columns: repeat(3,1fr); }
+  .modal-grid { grid-template-columns: 1fr; }
+  .modal-actions { grid-template-columns: 1fr; }
+  #lastUpdate { display: none; }
+}
+@media (max-width: 600px) {
+  .kpis { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-wrap">
+    <img src="data:image/png;base64,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" alt="CHEMES" />
+    <span class="logo-name">CHEMES</span>
+  </div>
+  <div class="hdr-divider"></div>
+  <div class="hdr-titles">
+    <h1>Panel Operativo — Centro de Distribución</h1>
+    <div class="hdr-sub">Pedidos PrestaShop pendientes de remitir</div>
+  </div>
+  <span id="lastUpdate">Cargando…</span>
+  <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀︎</button>
+</header>
+
+<main>
+  <div class="kpis">
+    <div class="kpi c-default"><div class="kpi-label">Total pendientes</div><div class="kpi-value" id="kpiTotal">—</div></div>
+    <div class="kpi c-red">   <div class="kpi-label">Demorados</div>       <div class="kpi-value" id="kpiDemorados">—</div></div>
+    <div class="kpi c-yellow"><div class="kpi-label">Atención</div>         <div class="kpi-value" id="kpiAtencion">—</div></div>
+    <div class="kpi c-violet"><div class="kpi-label">En preparación</div>   <div class="kpi-value" id="kpiPreparacion">—</div></div>
+    <div class="kpi c-teal">  <div class="kpi-label">Listos para remitir</div><div class="kpi-value" id="kpiListos">—</div></div>
+  </div>
+
+  <div class="toolbar">
+    <input id="search" placeholder="Buscar pedido, orden, referencia, cliente, email, localidad, teléfono…" oninput="render()" />
+    <select id="filterCrit" onchange="render()">
+      <option value="">Todas las criticidades</option>
+      <option value="DEMORADO">Demorado</option>
+      <option value="ATENCION">Atención</option>
+      <option value="OK">OK</option>
+    </select>
+    <select id="filterEstado" onchange="render()">
+      <option value="">Todos los estados</option>
+      <option value="PENDIENTE_REVISION">Pendiente revisión</option>
+      <option value="EN_PREPARACION">En preparación</option>
+      <option value="REVISADO_OK">Revisado OK</option>
+      <option value="OBSERVADO">Observado</option>
+      <option value="LISTO_PARA_REMITIR">Listo para remitir</option>
+    </select>
+    <select id="filterCanal" onchange="render()"><option value="">Todos los canales</option></select>
+    <button class="btn-primary" onclick="loadData()">↻ Actualizar</button>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th></th>
+          <th>Pedido Tango</th>
+          <th>Orden Web</th>
+          <th>Cliente</th>
+          <th>Localidad</th>
+          <th>Teléfono</th>
+          <th style="text-align:right">Total</th>
+          <th style="text-align:right">Envío</th>
+          <th>Hs pend.</th>
+          <th>Criticidad</th>
+          <th>Estado operador</th>
+          <th>Canal</th>
+        </tr>
+      </thead>
+      <tbody id="tbody">
+        <tr class="empty-row"><td colspan="12">Cargando datos…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<div class="modal-overlay" id="modal" onclick="overlayClick(event)">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="mTitle">Pedido</div>
+        <div class="modal-sub"  id="mSub"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-actions">
+      <div>
+        <label for="modalEstado">Estado operador</label>
+        <select id="modalEstado" style="width:100%">
+          <option value="PENDIENTE_REVISION">Pendiente revisión</option>
+          <option value="EN_PREPARACION">En preparación</option>
+          <option value="REVISADO_OK">Revisado OK</option>
+          <option value="OBSERVADO">Observado</option>
+          <option value="LISTO_PARA_REMITIR">Listo para remitir</option>
+        </select>
+      </div>
+      <div>
+        <label for="modalObs">Observación</label>
+        <textarea id="modalObs" placeholder="Observación del operador…"></textarea>
+      </div>
+      <div style="display:flex;gap:8px;align-self:end">
+        <button class="btn-ghost"   onclick="closeModal()">Cancelar</button>
+        <button class="btn-primary" onclick="saveEstado()">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const GAS = 'https://script.google.com/macros/s/AKfycbxaRLXkRW_hejF3gr8uHuSHvgVbibCAlLfjnpR36K9QeXDykicWU-0TaUapi9eSsE5V/exec';
+let pedidos = [], selectedPedido = null;
+
+function toggleTheme() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  document.getElementById('themeBtn').textContent = isDark ? '☽' : '☀︎';
+}
+
+function clean(v) { return (v ?? '').toString().trim(); }
+function money(v) { return Number(v||0).toLocaleString('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:0}); }
+
+function jsonp(url) {
+  return new Promise((resolve, reject) => {
+    const cb = 'cb_' + Date.now() + '_' + Math.floor(Math.random()*99999);
+    let done = false;
+    window[cb] = data => { done=true; delete window[cb]; if(script.parentNode) script.parentNode.removeChild(script); resolve(data); };
+    const script = document.createElement('script');
+    script.onload = () => setTimeout(()=>{ if(!done){delete window[cb]; reject(new Error('JSONP no ejecuto el callback.')); }},300);
+    script.onerror= () => setTimeout(()=>{ if(!done){delete window[cb]; reject(new Error('No se pudo cargar JSONP.')); }},300);
+    script.src = url + (url.includes('?')?'&':'?') + 'callback=' + cb;
+    document.body.appendChild(script);
+  });
+}
+
+async function loadData() {
+  document.getElementById('lastUpdate').textContent = 'Cargando...';
+  try {
+    const res = await jsonp(`${GAS}?api=pedidos&_=${Date.now()}`);
+    if (!res.ok) { alert('Error: '+res.error); return; }
+    pedidos = res.pedidos || [];
+    const canales = [...new Set(pedidos.map(p=>clean(p.usuario_tienda_vendedor)).filter(Boolean))].sort();
+    const sel = document.getElementById('filterCanal');
+    sel.innerHTML = '<option value="">Todos los canales</option>' + canales.map(c=>`<option value="${c}">${c}</option>`).join('');
+    document.getElementById('lastUpdate').textContent =
+      `Ultima actualizacion: ${res.generado||'-'} - ${res.cantidad||pedidos.length} registros`;
+    render();
+  } catch(err) {
+    document.getElementById('lastUpdate').textContent = 'Error de conexion';
+    alert('Error de conexion: '+err.message);
+  }
+}
+
+function estadoClass(e) {
+  if(e==='EN_PREPARACION')    return 'estado-prep';
+  if(e==='REVISADO_OK')       return 'estado-ok';
+  if(e==='OBSERVADO')         return 'estado-obs';
+  if(e==='LISTO_PARA_REMITIR')return 'estado-listo';
+  return 'estado';
+}
+function estadoLabel(e) {
+  return {PENDIENTE_REVISION:'Pendiente revision',EN_PREPARACION:'En preparacion',REVISADO_OK:'Revisado OK',OBSERVADO:'Observado',LISTO_PARA_REMITIR:'Listo para remitir'}[e]||e||'Pendiente revision';
+}
+
+function render() {
+  const q     = clean(document.getElementById('search').value).toLowerCase();
+  const crit  = document.getElementById('filterCrit').value;
+  const est   = document.getElementById('filterEstado').value;
+  const canal = document.getElementById('filterCanal').value;
+
+  const filtered = pedidos.filter(p => {
+    const blob = [p.nro_pedido,p.order_id_tienda,p.order_nro_tienda,p.cliente_entrega,
+      p.email_comprador,p.localidad_entrega,p.direccion_entrega,
+      p.telefono1_entrega,p.telefono_movil_wa,p.usuario_tienda_vendedor].join(' ').toLowerCase();
+    if(q     && !blob.includes(q)) return false;
+    if(crit  && p.criticidad!==crit) return false;
+    if(est   && p.estado_operador!==est) return false;
+    if(canal && p.usuario_tienda_vendedor!==canal) return false;
+    return true;
+  });
+
+  document.getElementById('kpiTotal').textContent       = pedidos.length;
+  document.getElementById('kpiDemorados').textContent   = pedidos.filter(p=>p.criticidad==='DEMORADO').length;
+  document.getElementById('kpiAtencion').textContent    = pedidos.filter(p=>p.criticidad==='ATENCION').length;
+  document.getElementById('kpiPreparacion').textContent = pedidos.filter(p=>p.estado_operador==='EN_PREPARACION').length;
+  document.getElementById('kpiListos').textContent      = pedidos.filter(p=>p.estado_operador==='LISTO_PARA_REMITIR').length;
+
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = '';
+  if(!filtered.length) { tbody.innerHTML='<tr class="empty-row"><td colspan="12">Sin resultados para los filtros aplicados</td></tr>'; return; }
+
+  filtered.forEach(p => {
+    const tel = clean(p.telefono_movil_wa)||clean(p.telefono1_entrega)||clean(p.telefono2_entrega);
+    const tr  = document.createElement('tr');
+    tr.innerHTML = `
+      <td><button class="btn-detail" onclick="openModal('${p.id_gva21}')">Ver</button></td>
+      <td><div class="cell-pedido">${clean(p.nro_pedido)}</div><div class="cell-ref">ID ${clean(p.id_gva21)}</div></td>
+      <td><div class="cell-pedido">#${clean(p.order_id_tienda)}</div><div class="cell-ref">${clean(p.order_nro_tienda)}</div></td>
+      <td>${clean(p.cliente_entrega)}</td>
+      <td>${clean(p.localidad_entrega)} <span class="cell-muted">${clean(p.codigo_postal_entrega)}</span></td>
+      <td class="cell-muted">${tel}</td>
+      <td class="cell-money">${money(p.total_orden)}</td>
+      <td class="cell-money" style="color:var(--muted)">${money(p.recargo_envio)}</td>
+      <td class="cell-muted" style="font-family:var(--font-mono)">${clean(p.horas_pendiente)}</td>
+      <td><span class="badge ${clean(p.criticidad)}">${clean(p.criticidad)}</span></td>
+      <td><span class="badge ${estadoClass(p.estado_operador)}">${estadoLabel(p.estado_operador)}</span></td>
+      <td class="cell-muted">${clean(p.usuario_tienda_vendedor)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function openModal(id) {
+  selectedPedido = pedidos.find(p=>String(p.id_gva21)===String(id));
+  if(!selectedPedido) return;
+  const p=selectedPedido;
+  const tel=clean(p.telefono_movil_wa)||clean(p.telefono1_entrega)||clean(p.telefono2_entrega);
+  document.getElementById('mTitle').textContent=p.nro_pedido;
+  document.getElementById('mSub').textContent=`Orden #${clean(p.order_id_tienda)} - Ref ${clean(p.order_nro_tienda)} - ${clean(p.usuario_tienda_vendedor)}`;
+  document.getElementById('modalEstado').value=p.estado_operador||'PENDIENTE_REVISION';
+  document.getElementById('modalObs').value=p.observacion_operador||p.observacion||'';
+  document.getElementById('modalBody').innerHTML=`
+    <div class="modal-grid">
+      <div class="info-card">
+        <h3>Datos de la orden</h3>
+        <div class="field"><b>Pedido Tango:</b>${clean(p.nro_pedido)}</div>
+        <div class="field"><b>Orden Web:</b>#${clean(p.order_id_tienda)}</div>
+        <div class="field"><b>Referencia:</b>${clean(p.order_nro_tienda)}</div>
+        <div class="field"><b>Estado Presta:</b>${clean(p.estado_orden)}</div>
+        <div class="field"><b>Canal:</b>${clean(p.usuario_tienda_vendedor)}</div>
+        <div class="field"><b>Fecha orden:</b>${clean(p.fecha_orden)}</div>
+        <div class="field"><b>Horas pendiente:</b>${clean(p.horas_pendiente)}</div>
+        <div class="field"><b>Criticidad:</b><span class="badge ${clean(p.criticidad)}">${clean(p.criticidad)}</span></div>
+      </div>
+      <div class="info-card">
+        <h3>Importes</h3>
+        <div class="field"><b>Total orden:</b><span style="color:var(--green);font-family:var(--font-mono)">${money(p.total_orden)}</span></div>
+        <div class="field"><b>Total Tango:</b>${money(p.total_pedi_con_impuestos)}</div>
+        <div class="field"><b>Recargo envio:</b>${money(p.recargo_envio)}</div>
+        <div class="field"><b>Envio domicilio:</b>${clean(p.envio_domicilio)}</div>
+      </div>
+      <div class="info-card">
+        <h3>Cliente / Contacto</h3>
+        <div class="field"><b>Cliente:</b>${clean(p.cliente_entrega)}</div>
+        <div class="field"><b>Email:</b>${clean(p.email_comprador)}</div>
+        <div class="field"><b>Email entrega:</b>${clean(p.email_entrega)}</div>
+        <div class="field"><b>Telefono:</b>${tel}</div>
+        <div class="field"><b>Customer ID:</b>${clean(p.web_customer_id)}</div>
+      </div>
+      <div class="info-card">
+        <h3>Direccion de entrega</h3>
+        <div class="field"><b>Direccion:</b>${clean(p.direccion_entrega)}</div>
+        <div class="field"><b>Ciudad:</b>${clean(p.ciudad_entrega)||'—'}</div>
+        <div class="field"><b>Localidad:</b>${clean(p.localidad_entrega)}</div>
+        <div class="field"><b>CP:</b>${clean(p.codigo_postal_entrega)}</div>
+        <div class="field"><b>Provincia:</b>${clean(p.cod_provincia_entrega)}</div>
+        <div class="field"><b>Address ID:</b>${clean(p.web_address_id)}</div>
+      </div>
+      <div class="info-card" style="grid-column:1/-1">
+        <h3>Nota del comprador</h3>
+        <div class="note">${clean(p.nota_comprador)||'Sin nota informada'}</div>
+      </div>
+    </div>
+    <div class="timeline">
+      <h3>Linea de tiempo operativa</h3>
+      <div class="tl-items">
+        <div class="tl-item"><div class="dot"></div><div class="tl-label">Creado en PrestaShop</div><div class="tl-sub">${clean(p.fecha_orden)}</div></div>
+        <div class="tl-item"><div class="dot"></div><div class="tl-label">Bajado a Tango / NEXO</div><div class="tl-sub">${clean(p.nro_pedido)}</div></div>
+        <div class="tl-item"><div class="${p.criticidad==='DEMORADO'?'dot alert':'dot wait'}"></div><div class="tl-label">Pendiente de remitir</div><div class="tl-sub">${clean(p.horas_pendiente)} hs transcurridas</div></div>
+        <div class="tl-item"><div class="dot wait"></div><div class="tl-label">Estado operador</div><div class="tl-sub">${estadoLabel(p.estado_operador)}</div></div>
+      </div>
+    </div>
+  `;
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal() { selectedPedido=null; document.getElementById('modal').classList.remove('open'); }
+function overlayClick(e) { if(e.target===document.getElementById('modal')) closeModal(); }
+
+async function saveEstado() {
+  if(!selectedPedido) return;
+  const estado=document.getElementById('modalEstado').value;
+  const obs=document.getElementById('modalObs').value||'';
+  const p=selectedPedido;
+  const params=new URLSearchParams({api:'marcar',id_gva21:clean(p.id_gva21),nro_pedido:clean(p.nro_pedido),order_id_tienda:clean(p.order_id_tienda),order_nro_tienda:clean(p.order_nro_tienda),estado_operador:estado,observacion:obs,usuario:'OPERADOR_CD',_:Date.now()});
+  const res=await jsonp(`${GAS}?${params.toString()}`);
+  if(!res.ok){alert('Error al guardar: '+res.error);return;}
+  closeModal();
+  await loadData();
+}
+
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
+loadData();
+</script>
+</body>
+</html>
