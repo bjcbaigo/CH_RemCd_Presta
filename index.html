@@ -143,6 +143,44 @@ button:active { transform: scale(.97); }
 .btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
 .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
 
+
+
+/* FILTRO PRO POR MODO */
+.mode-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 3px;
+}
+.mode-btn {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid transparent;
+  padding: 4px 9px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.mode-btn:hover {
+  color: var(--accent);
+  border-color: rgba(41,184,216,.25);
+}
+.mode-btn.active {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-color: rgba(41,184,216,.35);
+}
+.mode-count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  opacity: .85;
+  margin-left: 4px;
+}
+
 /* TABLE */
 .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: auto; box-shadow: var(--shadow); }
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -347,11 +385,12 @@ textarea:focus { border-color: var(--accent); }
 
   <div class="toolbar">
     <input id="search" placeholder="Buscar pedido, orden, referencia, cliente, email, localidad, teléfono…" oninput="render()" />
-    <select id="filterModo" onchange="render()">
-      <option value="PENDIENTE_REMITIR">Pendientes</option>
-      <option value="REMITIDO">Remitidos</option>
-      <option value="">Todos</option>
-    </select>
+    <div class="mode-toggle" id="modeToggle" title="Filtrar por estado de remisión CD">
+      <button type="button" class="mode-btn active" data-modo="" onclick="setModo('')">Todos <span class="mode-count" id="cntTodos">0</span></button>
+      <button type="button" class="mode-btn" data-modo="PENDIENTE_REMITIR" onclick="setModo('PENDIENTE_REMITIR')">Pendientes <span class="mode-count" id="cntPendientes">0</span></button>
+      <button type="button" class="mode-btn" data-modo="REMITIDO" onclick="setModo('REMITIDO')">Remitidos <span class="mode-count" id="cntRemitidos">0</span></button>
+    </div>
+    <input type="hidden" id="filterModo" value="" />
     <select id="filterCrit" onchange="render()">
       <option value="">Todas las criticidades</option>
       <option value="DEMORADO">Demorado</option>
@@ -443,48 +482,63 @@ function toggleTheme() {
 function clean(v) { return (v ?? '').toString().trim(); }
 function money(v) { return Number(v||0).toLocaleString('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:0}); }
 function estadoRemito(p) {
-  if (clean(p.estado_remito_cd)) return clean(p.estado_remito_cd);
+  const est = clean(p.estado_remito_cd).toUpperCase();
+  if (est === 'PENDIENTE_REMITIR') return 'PENDIENTE_REMITIR';
+  if (est === 'REMITIDO') return 'REMITIDO';
+
+  // Fallback tolerante por si el JSON aún no trae estado_remito_cd.
   const rem = clean(p.n_remito);
-  const est = clean(p.estado_tango);
-  if (est === '3' && rem) return 'REMITIDO';
-  if (est === '2' && !rem) return 'PENDIENTE_REMITIR';
+  const estadoTango = clean(p.estado_tango);
+  if (estadoTango === '3' && rem !== '') return 'REMITIDO';
+  if (estadoTango === '2' && rem === '') return 'PENDIENTE_REMITIR';
   return 'REVISAR';
 }
 function estadoRemitoLabel(v) {
   return { PENDIENTE_REMITIR: 'Pendiente', REMITIDO: 'Remitido', REVISAR: 'Revisar' }[v] || v || 'Revisar';
 }
 
+function setModo(modo) {
+  document.getElementById('filterModo').value = modo;
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.modo === modo);
+  });
+  render();
+}
+
+function updateModeCounters() {
+  const total = pedidos.length;
+  const pendientes = pedidos.filter(p => estadoRemito(p) === 'PENDIENTE_REMITIR').length;
+  const remitidos = pedidos.filter(p => estadoRemito(p) === 'REMITIDO').length;
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  set('cntTodos', total);
+  set('cntPendientes', pendientes);
+  set('cntRemitidos', remitidos);
+}
+
 function jsonp(url) {
   return new Promise((resolve, reject) => {
     const cb = 'cb_' + Date.now() + '_' + Math.floor(Math.random() * 99999);
     let finished = false;
-    let script = null;
 
-    const cleanup = () => {
-      try { delete window[cb]; } catch(e) { window[cb] = undefined; }
-      if (script && script.parentNode) script.parentNode.removeChild(script);
-    };
+    const script = document.createElement('script');
 
     window[cb] = function(data) {
-      if (finished) return;
       finished = true;
-      cleanup();
+      try { delete window[cb]; } catch(e) { window[cb] = undefined; }
+      if (script && script.parentNode) script.parentNode.removeChild(script);
       resolve(data);
     };
 
-    script = document.createElement('script');
-    script.async = true;
-    script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + encodeURIComponent(cb);
-
+    script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + cb;
     document.body.appendChild(script);
 
     setTimeout(() => {
       if (!finished) {
-        finished = true;
-        cleanup();
-        reject(new Error('No se ejecutó el callback JSONP. Verificar URL GAS, permisos del Web App o respuesta callback.'));
+        try { delete window[cb]; } catch(e) { window[cb] = undefined; }
+        if (script && script.parentNode) script.parentNode.removeChild(script);
+        reject(new Error('No se ejecutó el callback JSONP. Revisar URL GAS, permisos o caché del navegador.'));
       }
-    }, 30000);
+    }, 20000);
   });
 }
 
@@ -523,6 +577,8 @@ function render() {
   const crit  = document.getElementById('filterCrit').value;
   const est   = document.getElementById('filterEstado').value;
   const canal = document.getElementById('filterCanal').value;
+
+  updateModeCounters();
 
   const filtered = pedidos.filter(p => {
     const blob = [p.nro_pedido,p.order_id_tienda,p.order_nro_tienda,p.cliente_entrega,
