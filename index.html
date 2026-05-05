@@ -456,14 +456,35 @@ function estadoRemitoLabel(v) {
 
 function jsonp(url) {
   return new Promise((resolve, reject) => {
-    const cb = 'cb_' + Date.now() + '_' + Math.floor(Math.random()*99999);
-    let done = false;
-    window[cb] = data => { done=true; delete window[cb]; if(script.parentNode) script.parentNode.removeChild(script); resolve(data); };
-    const script = document.createElement('script');
-    script.onload = () => setTimeout(()=>{ if(!done){delete window[cb]; reject(new Error('JSONP no ejecuto el callback.')); }},300);
-    script.onerror= () => setTimeout(()=>{ if(!done){delete window[cb]; reject(new Error('No se pudo cargar JSONP.')); }},300);
-    script.src = url + (url.includes('?')?'&':'?') + 'callback=' + cb;
+    const cb = 'cb_' + Date.now() + '_' + Math.floor(Math.random() * 99999);
+    let finished = false;
+    let script = null;
+
+    const cleanup = () => {
+      try { delete window[cb]; } catch(e) { window[cb] = undefined; }
+      if (script && script.parentNode) script.parentNode.removeChild(script);
+    };
+
+    window[cb] = function(data) {
+      if (finished) return;
+      finished = true;
+      cleanup();
+      resolve(data);
+    };
+
+    script = document.createElement('script');
+    script.async = true;
+    script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + encodeURIComponent(cb);
+
     document.body.appendChild(script);
+
+    setTimeout(() => {
+      if (!finished) {
+        finished = true;
+        cleanup();
+        reject(new Error('No se ejecutó el callback JSONP. Verificar URL GAS, permisos del Web App o respuesta callback.'));
+      }
+    }, 30000);
   });
 }
 
