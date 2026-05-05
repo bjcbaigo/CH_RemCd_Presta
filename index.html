@@ -205,6 +205,88 @@ td { padding: 9px 12px; vertical-align: middle; white-space: nowrap; }
 .field b { color: var(--muted); font-weight: 500; flex-shrink: 0; min-width: 120px; }
 .note { font-size: 12.5px; font-style: italic; color: var(--muted); background: var(--bg); border-radius: var(--radius-sm); padding: 10px 12px; border: 1px solid var(--border); }
 
+
+
+/* MODAL REDISEÑADO */
+.order-top-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+.order-top-card h3,
+.record-card h3 {
+  font-size: 10.5px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--accent);
+  margin-bottom: 10px;
+}
+.order-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px 18px;
+}
+.order-cell {
+  min-width: 0;
+  font-size: 12.5px;
+}
+.order-cell b {
+  display: block;
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin-bottom: 2px;
+}
+.order-value {
+  font-family: var(--font-mono);
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.record-card {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  margin-bottom: 16px;
+}
+.record-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 1.35fr .9fr 1fr;
+  gap: 12px;
+}
+.record-col {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  min-width: 0;
+}
+.record-line {
+  font-size: 12.5px;
+  margin-bottom: 7px;
+  overflow-wrap: anywhere;
+}
+.record-line b {
+  display: block;
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin-bottom: 1px;
+}
+.badge.REMITIDO { background: rgba(20,184,166,.12); color: var(--teal); border-color: rgba(20,184,166,.3); }
+.badge.REMITIDO::before { background: var(--teal); }
+.badge.PENDIENTE_REMITIR { background: rgba(245,158,11,.12); color: var(--yellow); border-color: rgba(245,158,11,.3); }
+.badge.PENDIENTE_REMITIR::before { background: var(--yellow); }
+.badge.EN_TIEMPO { background: rgba(34,197,94,.12); color: var(--green); border-color: rgba(34,197,94,.3); }
+.badge.EN_TIEMPO::before { background: var(--green); }
+
 /* TIMELINE */
 .timeline { padding: 14px; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-md); }
 .timeline h3 { font-size: 10.5px; font-weight: 500; text-transform: uppercase; letter-spacing: .07em; color: var(--accent); margin-bottom: 14px; }
@@ -228,6 +310,8 @@ textarea:focus { border-color: var(--accent); }
 @media (max-width: 900px) {
   .kpis { grid-template-columns: repeat(3,1fr); }
   .modal-grid { grid-template-columns: 1fr; }
+  .order-row { grid-template-columns: 1fr 1fr; }
+  .record-grid { grid-template-columns: 1fr; }
   .modal-actions { grid-template-columns: 1fr; }
   #lastUpdate { display: none; }
 }
@@ -246,7 +330,7 @@ textarea:focus { border-color: var(--accent); }
   <div class="hdr-divider"></div>
   <div class="hdr-titles">
     <h1>Panel Operativo — Centro de Distribución</h1>
-    <div class="hdr-sub">Pedidos PrestaShop pendientes de remitir</div>
+    <div class="hdr-sub">Pedidos PrestaShop CD · pendientes y remitidos</div>
   </div>
   <span id="lastUpdate">Cargando…</span>
   <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">☀︎</button>
@@ -254,20 +338,25 @@ textarea:focus { border-color: var(--accent); }
 
 <main>
   <div class="kpis">
-    <div class="kpi c-default"><div class="kpi-label">Total pendientes</div><div class="kpi-value" id="kpiTotal">—</div></div>
+    <div class="kpi c-default"><div class="kpi-label">Total visibles</div><div class="kpi-value" id="kpiTotal">—</div></div>
     <div class="kpi c-red">   <div class="kpi-label">Demorados</div>       <div class="kpi-value" id="kpiDemorados">—</div></div>
     <div class="kpi c-yellow"><div class="kpi-label">Atención</div>         <div class="kpi-value" id="kpiAtencion">—</div></div>
     <div class="kpi c-violet"><div class="kpi-label">En preparación</div>   <div class="kpi-value" id="kpiPreparacion">—</div></div>
-    <div class="kpi c-teal">  <div class="kpi-label">Listos para remitir</div><div class="kpi-value" id="kpiListos">—</div></div>
+    <div class="kpi c-teal">  <div class="kpi-label">Remitidos</div><div class="kpi-value" id="kpiRemitidos">—</div></div>
   </div>
 
   <div class="toolbar">
     <input id="search" placeholder="Buscar pedido, orden, referencia, cliente, email, localidad, teléfono…" oninput="render()" />
+    <select id="filterModo" onchange="render()">
+      <option value="PENDIENTE_REMITIR">Pendientes</option>
+      <option value="REMITIDO">Remitidos</option>
+      <option value="">Todos</option>
+    </select>
     <select id="filterCrit" onchange="render()">
       <option value="">Todas las criticidades</option>
       <option value="DEMORADO">Demorado</option>
       <option value="ATENCION">Atención</option>
-      <option value="OK">OK</option>
+      <option value="EN_TIEMPO">En tiempo</option>
     </select>
     <select id="filterEstado" onchange="render()">
       <option value="">Todos los estados</option>
@@ -295,12 +384,14 @@ textarea:focus { border-color: var(--accent); }
           <th style="text-align:right">Envío</th>
           <th>Hs pend.</th>
           <th>Criticidad</th>
+          <th>Estado CD</th>
+          <th>Remito</th>
           <th>Estado operador</th>
           <th>Canal</th>
         </tr>
       </thead>
       <tbody id="tbody">
-        <tr class="empty-row"><td colspan="12">Cargando datos…</td></tr>
+        <tr class="empty-row"><td colspan="14">Cargando datos…</td></tr>
       </tbody>
     </table>
   </div>
@@ -351,6 +442,17 @@ function toggleTheme() {
 
 function clean(v) { return (v ?? '').toString().trim(); }
 function money(v) { return Number(v||0).toLocaleString('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:0}); }
+function estadoRemito(p) {
+  if (clean(p.estado_remito_cd)) return clean(p.estado_remito_cd);
+  const rem = clean(p.n_remito);
+  const est = clean(p.estado_tango);
+  if (est === '3' && rem) return 'REMITIDO';
+  if (est === '2' && !rem) return 'PENDIENTE_REMITIR';
+  return 'REVISAR';
+}
+function estadoRemitoLabel(v) {
+  return { PENDIENTE_REMITIR: 'Pendiente', REMITIDO: 'Remitido', REVISAR: 'Revisar' }[v] || v || 'Revisar';
+}
 
 function jsonp(url) {
   return new Promise((resolve, reject) => {
@@ -375,7 +477,7 @@ async function loadData() {
     const sel = document.getElementById('filterCanal');
     sel.innerHTML = '<option value="">Todos los canales</option>' + canales.map(c=>`<option value="${c}">${c}</option>`).join('');
     document.getElementById('lastUpdate').textContent =
-      `Ultima actualizacion: ${res.generado||'-'} - ${res.cantidad||pedidos.length} registros`;
+      `Última actualización: ${res.generado||'-'} - ${res.cantidad||pedidos.length} registros`;
     render();
   } catch(err) {
     document.getElementById('lastUpdate').textContent = 'Error de conexion';
@@ -396,6 +498,7 @@ function estadoLabel(e) {
 
 function render() {
   const q     = clean(document.getElementById('search').value).toLowerCase();
+  const modo  = document.getElementById('filterModo').value;
   const crit  = document.getElementById('filterCrit').value;
   const est   = document.getElementById('filterEstado').value;
   const canal = document.getElementById('filterCanal').value;
@@ -405,21 +508,22 @@ function render() {
       p.email_comprador,p.localidad_entrega,p.direccion_entrega,
       p.telefono1_entrega,p.telefono_movil_wa,p.usuario_tienda_vendedor].join(' ').toLowerCase();
     if(q     && !blob.includes(q)) return false;
+    if(modo  && estadoRemito(p)!==modo) return false;
     if(crit  && p.criticidad!==crit) return false;
     if(est   && p.estado_operador!==est) return false;
     if(canal && p.usuario_tienda_vendedor!==canal) return false;
     return true;
   });
 
-  document.getElementById('kpiTotal').textContent       = pedidos.length;
-  document.getElementById('kpiDemorados').textContent   = pedidos.filter(p=>p.criticidad==='DEMORADO').length;
-  document.getElementById('kpiAtencion').textContent    = pedidos.filter(p=>p.criticidad==='ATENCION').length;
-  document.getElementById('kpiPreparacion').textContent = pedidos.filter(p=>p.estado_operador==='EN_PREPARACION').length;
-  document.getElementById('kpiListos').textContent      = pedidos.filter(p=>p.estado_operador==='LISTO_PARA_REMITIR').length;
+  document.getElementById('kpiTotal').textContent       = filtered.length;
+  document.getElementById('kpiDemorados').textContent   = filtered.filter(p=>p.criticidad==='DEMORADO').length;
+  document.getElementById('kpiAtencion').textContent    = filtered.filter(p=>p.criticidad==='ATENCION').length;
+  document.getElementById('kpiPreparacion').textContent = filtered.filter(p=>p.estado_operador==='EN_PREPARACION').length;
+  document.getElementById('kpiRemitidos').textContent   = pedidos.filter(p=>estadoRemito(p)==='REMITIDO').length;
 
   const tbody = document.getElementById('tbody');
   tbody.innerHTML = '';
-  if(!filtered.length) { tbody.innerHTML='<tr class="empty-row"><td colspan="12">Sin resultados para los filtros aplicados</td></tr>'; return; }
+  if(!filtered.length) { tbody.innerHTML='<tr class="empty-row"><td colspan="14">Sin resultados para los filtros aplicados</td></tr>'; return; }
 
   filtered.forEach(p => {
     const tel = clean(p.telefono_movil_wa)||clean(p.telefono1_entrega)||clean(p.telefono2_entrega);
@@ -435,6 +539,8 @@ function render() {
       <td class="cell-money" style="color:var(--muted)">${money(p.recargo_envio)}</td>
       <td class="cell-muted" style="font-family:var(--font-mono)">${clean(p.horas_pendiente)}</td>
       <td><span class="badge ${clean(p.criticidad)}">${clean(p.criticidad)}</span></td>
+      <td><span class="badge ${estadoRemito(p)}">${estadoRemitoLabel(estadoRemito(p))}</span></td>
+      <td class="cell-muted">${clean(p.n_remito) || '—'}</td>
       <td><span class="badge ${estadoClass(p.estado_operador)}">${estadoLabel(p.estado_operador)}</span></td>
       <td class="cell-muted">${clean(p.usuario_tienda_vendedor)}</td>
     `;
@@ -452,53 +558,69 @@ function openModal(id) {
   document.getElementById('modalEstado').value=p.estado_operador||'PENDIENTE_REVISION';
   document.getElementById('modalObs').value=p.observacion_operador||p.observacion||'';
   document.getElementById('modalBody').innerHTML=`
-    <div class="modal-grid">
-      <div class="info-card">
-        <h3>Datos de la orden</h3>
-        <div class="field"><b>Pedido Tango:</b>${clean(p.nro_pedido)}</div>
-        <div class="field"><b>Orden Web:</b>#${clean(p.order_id_tienda)}</div>
-        <div class="field"><b>Referencia:</b>${clean(p.order_nro_tienda)}</div>
-        <div class="field"><b>Estado Presta:</b>${clean(p.estado_orden)}</div>
-        <div class="field"><b>Canal:</b>${clean(p.usuario_tienda_vendedor)}</div>
-        <div class="field"><b>Fecha orden:</b>${clean(p.fecha_orden)}</div>
-        <div class="field"><b>Horas pendiente:</b>${clean(p.horas_pendiente)}</div>
-        <div class="field"><b>Criticidad:</b><span class="badge ${clean(p.criticidad)}">${clean(p.criticidad)}</span></div>
-      </div>
-      <div class="info-card">
-        <h3>Importes</h3>
-        <div class="field"><b>Total orden:</b><span style="color:var(--green);font-family:var(--font-mono)">${money(p.total_orden)}</span></div>
-        <div class="field"><b>Total Tango:</b>${money(p.total_pedi_con_impuestos)}</div>
-        <div class="field"><b>Recargo envio:</b>${money(p.recargo_envio)}</div>
-        <div class="field"><b>Envio domicilio:</b>${clean(p.envio_domicilio)}</div>
-      </div>
-      <div class="info-card">
-        <h3>Cliente / Contacto</h3>
-        <div class="field"><b>Cliente:</b>${clean(p.cliente_entrega)}</div>
-        <div class="field"><b>Email:</b>${clean(p.email_comprador)}</div>
-        <div class="field"><b>Email entrega:</b>${clean(p.email_entrega)}</div>
-        <div class="field"><b>Telefono:</b>${tel}</div>
-        <div class="field"><b>Customer ID:</b>${clean(p.web_customer_id)}</div>
-      </div>
-      <div class="info-card">
-        <h3>Direccion de entrega</h3>
-        <div class="field"><b>Direccion:</b>${clean(p.direccion_entrega)}</div>
-        <div class="field"><b>Ciudad:</b>${clean(p.ciudad_entrega)||'—'}</div>
-        <div class="field"><b>Localidad:</b>${clean(p.localidad_entrega)}</div>
-        <div class="field"><b>CP:</b>${clean(p.codigo_postal_entrega)}</div>
-        <div class="field"><b>Provincia:</b>${clean(p.cod_provincia_entrega)}</div>
-        <div class="field"><b>Address ID:</b>${clean(p.web_address_id)}</div>
-      </div>
-      <div class="info-card" style="grid-column:1/-1">
-        <h3>Nota del comprador</h3>
-        <div class="note">${clean(p.nota_comprador)||'Sin nota informada'}</div>
+    <div class="order-top-card">
+      <h3>Datos de la orden</h3>
+      <div class="order-row">
+        <div class="order-cell"><b>Pedido Tango</b><div class="order-value">${clean(p.nro_pedido)}</div></div>
+        <div class="order-cell"><b>Orden Web</b><div class="order-value">#${clean(p.order_id_tienda)}</div></div>
+        <div class="order-cell"><b>Referencia</b><div class="order-value">${clean(p.order_nro_tienda)}</div></div>
+        <div class="order-cell"><b>Canal</b><div class="order-value">${clean(p.usuario_tienda_vendedor)}</div></div>
+        <div class="order-cell"><b>Fecha orden</b><div class="order-value">${clean(p.fecha_orden)}</div></div>
+        <div class="order-cell"><b>Horas</b><div class="order-value">${clean(p.horas_pendiente)}</div></div>
+        <div class="order-cell"><b>Criticidad</b><span class="badge ${clean(p.criticidad)}">${clean(p.criticidad)}</span></div>
+        <div class="order-cell"><b>Estado CD</b><span class="badge ${estadoRemito(p)}">${estadoRemitoLabel(estadoRemito(p))}</span></div>
       </div>
     </div>
+
+    <div class="record-card">
+      <h3>Detalle operativo</h3>
+      <div class="record-grid">
+        <div class="record-col">
+          <div class="record-line"><b>Cliente</b>${clean(p.cliente_entrega)}</div>
+          <div class="record-line"><b>Email comprador</b>${clean(p.email_comprador)}</div>
+          <div class="record-line"><b>Email entrega</b>${clean(p.email_entrega)}</div>
+          <div class="record-line"><b>Teléfono</b>${tel}</div>
+          <div class="record-line"><b>Customer ID</b>${clean(p.web_customer_id)}</div>
+        </div>
+
+        <div class="record-col">
+          <div class="record-line"><b>Dirección</b>${clean(p.direccion_entrega)}</div>
+          <div class="record-line"><b>Ciudad</b>${clean(p.ciudad_entrega)||'—'}</div>
+          <div class="record-line"><b>Localidad</b>${clean(p.localidad_entrega)}</div>
+          <div class="record-line"><b>CP</b>${clean(p.codigo_postal_entrega)}</div>
+          <div class="record-line"><b>Provincia</b>${clean(p.cod_provincia_entrega)}</div>
+          <div class="record-line"><b>Address ID</b>${clean(p.web_address_id)}</div>
+        </div>
+
+        <div class="record-col">
+          <div class="record-line"><b>Total orden</b><span style="color:var(--green);font-family:var(--font-mono)">${money(p.total_orden)}</span></div>
+          <div class="record-line"><b>Total Tango</b>${money(p.total_pedi_con_impuestos)}</div>
+          <div class="record-line"><b>Recargo envío</b>${money(p.recargo_envio)}</div>
+          <div class="record-line"><b>Envío domicilio</b>${clean(p.envio_domicilio)}</div>
+          <div class="record-line"><b>N° remito</b>${clean(p.n_remito) || '—'}</div>
+        </div>
+
+        <div class="record-col">
+          <div class="record-line"><b>Estado operador</b>${estadoLabel(p.estado_operador)}</div>
+          <div class="record-line"><b>Usuario operador</b>${clean(p.usuario_operador) || '—'}</div>
+          <div class="record-line"><b>Fecha acción</b>${clean(p.fecha_accion_operador) || clean(p.fecha_ultima_accion) || '—'}</div>
+          <div class="record-line"><b>Estado Presta</b>${clean(p.estado_orden)}</div>
+          <div class="record-line"><b>Estado Tango</b>${clean(p.estado_tango)}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-card" style="margin-bottom:16px;">
+      <h3>Nota del comprador</h3>
+      <div class="note">${clean(p.nota_comprador)||'Sin nota informada'}</div>
+    </div>
+
     <div class="timeline">
       <h3>Linea de tiempo operativa</h3>
       <div class="tl-items">
         <div class="tl-item"><div class="dot"></div><div class="tl-label">Creado en PrestaShop</div><div class="tl-sub">${clean(p.fecha_orden)}</div></div>
         <div class="tl-item"><div class="dot"></div><div class="tl-label">Bajado a Tango / NEXO</div><div class="tl-sub">${clean(p.nro_pedido)}</div></div>
-        <div class="tl-item"><div class="${p.criticidad==='DEMORADO'?'dot alert':'dot wait'}"></div><div class="tl-label">Pendiente de remitir</div><div class="tl-sub">${clean(p.horas_pendiente)} hs transcurridas</div></div>
+        <div class="tl-item"><div class="${estadoRemito(p)==='REMITIDO'?'dot':'dot alert'}"></div><div class="tl-label">${estadoRemito(p)==='REMITIDO'?'Remitido desde CD':'Pendiente de remitir'}</div><div class="tl-sub">${estadoRemito(p)==='REMITIDO' ? (clean(p.n_remito)||'Remito generado') : clean(p.horas_pendiente)+' hs transcurridas'}</div></div>
         <div class="tl-item"><div class="dot wait"></div><div class="tl-label">Estado operador</div><div class="tl-sub">${estadoLabel(p.estado_operador)}</div></div>
       </div>
     </div>
