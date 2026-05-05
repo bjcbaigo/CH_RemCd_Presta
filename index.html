@@ -497,6 +497,18 @@ function estadoRemitoLabel(v) {
   return { PENDIENTE_REMITIR: 'Pendiente', REMITIDO: 'Remitido', REVISAR: 'Revisar' }[v] || v || 'Revisar';
 }
 
+function renderDetalleArticulos(detalle) {
+  const texto = clean(detalle);
+  if (!texto) return 'Sin detalle de artículos';
+
+  return texto
+    .split('|')
+    .map(x => clean(x))
+    .filter(Boolean)
+    .map(x => `• ${x}`)
+    .join('<br>');
+}
+
 function setModo(modo) {
   document.getElementById('filterModo').value = modo;
   document.querySelectorAll('.mode-btn').forEach(btn => {
@@ -685,6 +697,11 @@ function openModal(id) {
           <div class="record-line"><b>Estado Tango</b>${clean(p.estado_tango)}</div>
         </div>
       </div>
+    </div>
+
+    <div class="info-card" style="margin-bottom:16px;">
+      <h3>Artículos del pedido</h3>
+      <div class="note">${renderDetalleArticulos(p.detalle_articulos)}</div>
     </div>
 
     <div class="info-card" style="margin-bottom:16px;">
