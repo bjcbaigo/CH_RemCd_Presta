@@ -143,6 +143,11 @@ button:active { transform: scale(.97); }
 .btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
 .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
 
+.oca-btn { background: rgba(20,184,166,.18); color: var(--teal); border: 1px solid rgba(20,184,166,.35); }
+.oca-btn:hover { background: rgba(20,184,166,.28); }
+.oca-check { width: 15px; height: 15px; accent-color: var(--teal); vertical-align: middle; margin-right: 8px; }
+.oca-check:disabled { opacity: .35; cursor: not-allowed; }
+
 
 
 /* FILTRO PRO POR MODO */
@@ -322,6 +327,10 @@ td { padding: 9px 12px; vertical-align: middle; white-space: nowrap; }
 .badge.REMITIDO::before { background: var(--teal); }
 .badge.PENDIENTE_REMITIR { background: rgba(245,158,11,.12); color: var(--yellow); border-color: rgba(245,158,11,.3); }
 .badge.PENDIENTE_REMITIR::before { background: var(--yellow); }
+.badge.FACTURADO_PENDIENTE_REMITIR { background: rgba(245,158,11,.12); color: var(--yellow); border-color: rgba(245,158,11,.3); }
+.badge.FACTURADO_PENDIENTE_REMITIR::before { background: var(--yellow); }
+.badge.PENDIENTE_FACTURAR { background: rgba(100,116,139,.12); color: var(--muted); border-color: rgba(100,116,139,.3); }
+.badge.PENDIENTE_FACTURAR::before { background: var(--muted); }
 .badge.EN_TIEMPO { background: rgba(34,197,94,.12); color: var(--green); border-color: rgba(34,197,94,.3); }
 .badge.EN_TIEMPO::before { background: var(--green); }
 
@@ -387,7 +396,8 @@ textarea:focus { border-color: var(--accent); }
     <input id="search" placeholder="Buscar pedido, orden, referencia, cliente, email, localidad, teléfono…" oninput="render()" />
     <div class="mode-toggle" id="modeToggle" title="Filtrar por estado de remisión CD">
       <button type="button" class="mode-btn active" data-modo="" onclick="setModo('')">Todos <span class="mode-count" id="cntTodos">0</span></button>
-      <button type="button" class="mode-btn" data-modo="PENDIENTE_REMITIR" onclick="setModo('PENDIENTE_REMITIR')">Pendientes <span class="mode-count" id="cntPendientes">0</span></button>
+      <button type="button" class="mode-btn" data-modo="FACTURADO_PENDIENTE_REMITIR" onclick="setModo('FACTURADO_PENDIENTE_REMITIR')">Fact. pendientes <span class="mode-count" id="cntFacturadosPendientes">0</span></button>
+      <button type="button" class="mode-btn" data-modo="PENDIENTE_FACTURAR" onclick="setModo('PENDIENTE_FACTURAR')">Pend. facturar <span class="mode-count" id="cntPendFacturar">0</span></button>
       <button type="button" class="mode-btn" data-modo="REMITIDO" onclick="setModo('REMITIDO')">Remitidos <span class="mode-count" id="cntRemitidos">0</span></button>
     </div>
     <input type="hidden" id="filterModo" value="" />
@@ -407,6 +417,7 @@ textarea:focus { border-color: var(--accent); }
     </select>
     <select id="filterCanal" onchange="render()"><option value="">Todos los canales</option></select>
     <button class="btn-primary" onclick="loadData()">↻ Actualizar</button>
+    <button class="oca-btn" onclick="generarCsvOcaSeleccionados()">Generar CSV OCA <span id="ocaSelectedCount">0</span></button>
   </div>
 
   <div class="table-wrap">
@@ -472,6 +483,7 @@ textarea:focus { border-color: var(--accent); }
 <script>
 const GAS = 'https://script.google.com/macros/s/AKfycbxaRLXkRW_hejF3gr8uHuSHvgVbibCAlLfjnpR36K9QeXDykicWU-0TaUapi9eSsE5V/exec';
 let pedidos = [], selectedPedido = null;
+const selectedOca = new Set();
 
 function toggleTheme() {
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
@@ -483,10 +495,8 @@ function clean(v) { return (v ?? '').toString().trim(); }
 function money(v) { return Number(v||0).toLocaleString('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:0}); }
 function estadoRemito(p) {
   const est = clean(p.estado_remito_cd).toUpperCase();
-  if (est === 'PENDIENTE_REMITIR') return 'PENDIENTE_REMITIR';
-  if (est === 'REMITIDO') return 'REMITIDO';
+  if (['FACTURADO_PENDIENTE_REMITIR','PENDIENTE_FACTURAR','PENDIENTE_REMITIR','REMITIDO','REVISAR'].includes(est)) return est;
 
-  // Fallback tolerante por si el JSON aún no trae estado_remito_cd.
   const rem = clean(p.n_remito);
   const estadoTango = clean(p.estado_tango);
   if (estadoTango === '3' && rem !== '') return 'REMITIDO';
@@ -494,19 +504,145 @@ function estadoRemito(p) {
   return 'REVISAR';
 }
 function estadoRemitoLabel(v) {
-  return { PENDIENTE_REMITIR: 'Pendiente', REMITIDO: 'Remitido', REVISAR: 'Revisar' }[v] || v || 'Revisar';
+  return {
+    FACTURADO_PENDIENTE_REMITIR: 'Facturado pendiente',
+    PENDIENTE_FACTURAR: 'Pendiente facturar',
+    PENDIENTE_REMITIR: 'Pendiente',
+    REMITIDO: 'Remitido',
+    REVISAR: 'Revisar'
+  }[v] || v || 'Revisar';
 }
 
-function renderDetalleArticulos(detalle) {
-  const texto = clean(detalle);
-  if (!texto) return 'Sin detalle de artículos';
+function ocaEligible(p) {
+  return estadoRemito(p) === 'REMITIDO' && clean(p.n_remito) !== '';
+}
 
-  return texto
-    .split('|')
-    .map(x => clean(x))
-    .filter(Boolean)
-    .map(x => `• ${x}`)
-    .join('<br>');
+function toggleOcaSelect(id, checked) {
+  if (checked) selectedOca.add(String(id));
+  else selectedOca.delete(String(id));
+  updateOcaSelectedCount();
+}
+
+function updateOcaSelectedCount() {
+  const el = document.getElementById('ocaSelectedCount');
+  if (el) el.textContent = selectedOca.size;
+}
+
+function normalizarTextoOca(v) { return clean(v).replace(/\s+/g, ' ').trim(); }
+function splitNombreApellido(nombreCompleto) {
+  const n = normalizarTextoOca(nombreCompleto);
+  if (!n) return { apellido: '', nombre: '' };
+  if (n.includes(',')) {
+    const [apellido, ...rest] = n.split(',');
+    return { apellido: normalizarTextoOca(apellido), nombre: normalizarTextoOca(rest.join(' ')) };
+  }
+  const parts = n.split(' ');
+  if (parts.length === 1) return { apellido: parts[0], nombre: '' };
+  return { apellido: parts[0], nombre: parts.slice(1).join(' ') };
+}
+function splitCalleNumero(direccion) {
+  const d = normalizarTextoOca(direccion);
+  const match = d.match(/^(.*?)(\d+[A-Za-zº°\/\-]*)\s*$/);
+  if (match) return { calle: normalizarTextoOca(match[1]), numero: normalizarTextoOca(match[2]) };
+  return { calle: d, numero: '0' };
+}
+function telefonoOca(p) { return (clean(p.telefono_movil_wa) || clean(p.telefono1_entrega) || clean(p.telefono2_entrega)).replace(/[^0-9]/g, ''); }
+function formatOcaMoney(v) { return Math.round(Number(v || 0)).toLocaleString('es-AR', { maximumFractionDigits: 0 }); }
+function csvEscape(v) {
+  let s = normalizarTextoOca(v);
+  if (/[;"\r\n]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+function encodeWindows1252(str) {
+  const map = { '€':0x80, '‚':0x82, 'ƒ':0x83, '„':0x84, '…':0x85, '†':0x86, '‡':0x87, 'ˆ':0x88, '‰':0x89, 'Š':0x8A, '‹':0x8B, 'Œ':0x8C, 'Ž':0x8E, '‘':0x91, '’':0x92, '“':0x93, '”':0x94, '•':0x95, '–':0x96, '—':0x97, '˜':0x98, '™':0x99, 'š':0x9A, '›':0x9B, 'œ':0x9C, 'ž':0x9E, 'Ÿ':0x9F };
+  const bytes = [];
+  for (const ch of str) {
+    const code = ch.charCodeAt(0);
+    if (map[ch]) bytes.push(map[ch]);
+    else if (code <= 255) bytes.push(code);
+    else bytes.push(63);
+  }
+  return new Uint8Array(bytes);
+}
+function buildOcaRow(p) {
+  const nom = splitNombreApellido(p.cliente_entrega);
+  const dir = splitCalleNumero(p.direccion_entrega);
+  const obs = [
+    `Pedido ${clean(p.nro_pedido)}`,
+    `Orden ${clean(p.order_id_tienda)}`,
+    `Ref ${clean(p.order_nro_tienda)}`,
+    clean(p.n_comp_factura) ? `Factura ${clean(p.t_comp_factura)} ${clean(p.n_comp_factura)}` : '',
+    clean(p.detalle_articulos) ? `Articulos: ${clean(p.detalle_articulos)}` : '',
+    clean(p.nota_comprador) ? `Nota: ${clean(p.nota_comprador)}` : ''
+  ].filter(Boolean).join(' | ');
+
+  return [
+    nom.apellido,
+    nom.nombre,
+    'dni',
+    clean(p.order_id_tienda),
+    dir.calle,
+    dir.numero,
+    '0',
+    '0',
+    clean(p.codigo_postal_entrega),
+    clean(p.localidad_entrega),
+    clean(p.provincia_entrega) || clean(p.cod_provincia_entrega),
+    telefonoOca(p),
+    clean(p.email_entrega) || clean(p.email_comprador),
+    'av presidente peron',
+    '802',
+    '0',
+    '',
+    '34826349113',
+    '3550',
+    'vera',
+    'santa fe',
+    '',
+    '1',
+    '4',
+    '22',
+    '24',
+    '53',
+    formatOcaMoney(p.total_orden || p.total_pedi_con_impuestos || p.importe_factura),
+    clean(p.n_remito),
+    '402901',
+    '',
+    '1',
+    '1',
+    obs,
+    '1'
+  ];
+}
+function generarCsvOcaSeleccionados() {
+  const seleccionados = pedidos.filter(p => selectedOca.has(String(p.id_gva21)));
+  if (!seleccionados.length) {
+    alert('No hay pedidos seleccionados para OCA. Solo se pueden tildar pedidos REMITIDOS y con número de remito.');
+    return;
+  }
+  const invalidos = seleccionados.filter(p => !ocaEligible(p));
+  if (invalidos.length) {
+    alert('Hay pedidos seleccionados que no cumplen la regla OCA: deben estar REMITIDOS y tener número de remito.');
+    return;
+  }
+
+  const headers = [
+    'Destinatario - Apellido','Destinatario - Nombre','Destinatario - TipoDocumento','Destinatario - Documento','Destinatario - Calle','Destinatario - Número','Destinatario - Piso','Destinatario - Depto.','Destinatario - Código Postal','Destinatario - Localidad','Destinatario - Provincia','Destinatario - Teléfono','Destinatario - Email','Retiro - Calle','Retiro - Número','Retiro - Piso','Retiro - Depto.','Retiro - Teléfono','Retiro - Código Postal','Retiro - Localidad','Retiro - Provincia','Retiro - Contacto','Paquete - Cantidad','Paquete - Peso [kg]','Paquete - Alto [cm]','Paquete - Largo [cm]','Paquete - Ancho [cm]','Valor Asegurado','Número de Remito','Número de Operativa','Retiro - Email','Retiro - Dias','Retiro - Franja Horaria','Observaciones','Cantidad Remitos'
+  ];
+
+  const lines = [headers.map(csvEscape).join(';')];
+  seleccionados.forEach(p => lines.push(buildOcaRow(p).map(csvEscape).join(';')));
+  const csv = lines.join('\r\n');
+  const bytes = encodeWindows1252(csv);
+  const blob = new Blob([bytes], { type: 'text/csv;charset=windows-1252' });
+  const a = document.createElement('a');
+  const stamp = new Date().toISOString().slice(0,19).replace(/[-:T]/g,'');
+  a.href = URL.createObjectURL(blob);
+  a.download = `OCA_etiquetas_CD_${stamp}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  URL.revokeObjectURL(a.href);
+  a.remove();
 }
 
 function setModo(modo) {
@@ -519,11 +655,13 @@ function setModo(modo) {
 
 function updateModeCounters() {
   const total = pedidos.length;
-  const pendientes = pedidos.filter(p => estadoRemito(p) === 'PENDIENTE_REMITIR').length;
+  const factPend = pedidos.filter(p => estadoRemito(p) === 'FACTURADO_PENDIENTE_REMITIR').length;
+  const pendFact = pedidos.filter(p => estadoRemito(p) === 'PENDIENTE_FACTURAR').length;
   const remitidos = pedidos.filter(p => estadoRemito(p) === 'REMITIDO').length;
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
   set('cntTodos', total);
-  set('cntPendientes', pendientes);
+  set('cntFacturadosPendientes', factPend);
+  set('cntPendFacturar', pendFact);
   set('cntRemitidos', remitidos);
 }
 
@@ -560,6 +698,8 @@ async function loadData() {
     const res = await jsonp(`${GAS}?api=pedidos&_=${Date.now()}`);
     if (!res.ok) { alert('Error: '+res.error); return; }
     pedidos = res.pedidos || [];
+    selectedOca.clear();
+    updateOcaSelectedCount();
     const canales = [...new Set(pedidos.map(p=>clean(p.usuario_tienda_vendedor)).filter(Boolean))].sort();
     const sel = document.getElementById('filterCanal');
     sel.innerHTML = '<option value="">Todos los canales</option>' + canales.map(c=>`<option value="${c}">${c}</option>`).join('');
@@ -618,7 +758,10 @@ function render() {
     const tel = clean(p.telefono_movil_wa)||clean(p.telefono1_entrega)||clean(p.telefono2_entrega);
     const tr  = document.createElement('tr');
     tr.innerHTML = `
-      <td><button class="btn-detail" onclick="openModal('${p.id_gva21}')">Ver</button></td>
+      <td>
+        <input class="oca-check" type="checkbox" ${selectedOca.has(String(p.id_gva21)) ? 'checked' : ''} ${ocaEligible(p) ? '' : 'disabled'} title="${ocaEligible(p) ? 'Seleccionar para CSV OCA' : 'OCA requiere pedido remitido con número de remito'}" onchange="toggleOcaSelect('${p.id_gva21}', this.checked)">
+        <button class="btn-detail" onclick="openModal('${p.id_gva21}')">Ver</button>
+      </td>
       <td><div class="cell-pedido">${clean(p.nro_pedido)}</div><div class="cell-ref">ID ${clean(p.id_gva21)}</div></td>
       <td><div class="cell-pedido">#${clean(p.order_id_tienda)}</div><div class="cell-ref">${clean(p.order_nro_tienda)}</div></td>
       <td>${clean(p.cliente_entrega)}</td>
@@ -677,7 +820,7 @@ function openModal(id) {
           <div class="record-line"><b>Ciudad</b>${clean(p.ciudad_entrega)||'—'}</div>
           <div class="record-line"><b>Localidad</b>${clean(p.localidad_entrega)}</div>
           <div class="record-line"><b>CP</b>${clean(p.codigo_postal_entrega)}</div>
-          <div class="record-line"><b>Provincia</b>${clean(p.cod_provincia_entrega)}</div>
+          <div class="record-line"><b>Provincia</b>${clean(p.provincia_entrega) || '—'} <span class="cell-muted">(${clean(p.cod_provincia_entrega)})</span></div>
           <div class="record-line"><b>Address ID</b>${clean(p.web_address_id)}</div>
         </div>
 
@@ -701,7 +844,7 @@ function openModal(id) {
 
     <div class="info-card" style="margin-bottom:16px;">
       <h3>Artículos del pedido</h3>
-      <div class="note">${renderDetalleArticulos(p.detalle_articulos)}</div>
+      <div class="note">${(clean(p.detalle_articulos) || 'Sin detalle de artículos').split('|').map(a => '• ' + a.trim()).join('<br>')}</div>
     </div>
 
     <div class="info-card" style="margin-bottom:16px;">
