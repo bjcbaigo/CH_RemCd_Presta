@@ -831,16 +831,19 @@ function clean(v) { return (v ?? '').toString().trim(); }
 function remitoEmpiezaConX(p) {
   return clean(p.n_remito).toUpperCase().startsWith('X');
 }
-function esTalonario234(p) {
-  const talonario = clean(
-    p.talonario_pedido ||
-    p.TALONARIO_PEDIDO ||
-    p.talonario ||
-    p.TALONARIO ||
-    p.talon_ped ||
-    p.TALON_PED
+function getTalonarioPedido(p) {
+  return clean(
+    p.talonario_pedido ??
+    p.TALONARIO_PEDIDO ??
+    p.talonario ??
+    p.TALONARIO ??
+    p.talon_ped ??
+    p.TALON_PED ??
+    ''
   );
-  return talonario === '234';
+}
+function esTalonario234(p) {
+  return getTalonarioPedido(p) === '234';
 }
 function money(v) { return Number(v||0).toLocaleString('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:0}); }
 function estadoRemito(p) {
