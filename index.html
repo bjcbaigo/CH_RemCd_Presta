@@ -79,6 +79,11 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+html, body {
+  height: 100%;
+  overflow: hidden; /* el scroll lo maneja la tabla */
+}
+
 body {
   font-family: var(--font-body);
   font-weight: 400;
@@ -87,6 +92,8 @@ body {
   color: var(--text);
   line-height: 1.5;
   transition: background .25s, color .25s;
+  display: flex;
+  flex-direction: column;
   /* Fondo con textura sutil de puntos */
   background-image:
     radial-gradient(circle at 20% 20%, rgba(0,128,230,.06) 0%, transparent 50%),
@@ -161,10 +168,18 @@ header::before {
 }
 
 /* ── MAIN ── */
-main { padding: 20px 22px; }
+main {
+  padding: 20px 22px 0;
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+}
 
 /* ── KPIs ── */
-.kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 18px; }
+.kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 14px; flex-shrink: 0; }
 
 .kpi {
   background: var(--surface);
@@ -244,9 +259,10 @@ main { padding: 20px 22px; }
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: 11px 16px; margin-bottom: 14px;
+  padding: 11px 16px; margin-bottom: 10px;
   display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
   box-shadow: var(--shadow-sm);
+  flex-shrink: 0;
 }
 
 input, select {
@@ -341,10 +357,29 @@ button:active { transform: scale(.97); }
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  overflow: auto;
+  overflow: auto;          /* scroll en X e Y */
+  overflow-x: auto;
+  overflow-y: auto;
   box-shadow: var(--shadow-md);
+  flex: 1 1 0;             /* ocupa todo el espacio disponible */
+  min-height: 0;           /* permite que flex lo comprima */
+  /* margen inferior para respirar antes del borde de pantalla */
+  margin-bottom: 12px;
+  /* scrollbar estilizado */
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
 }
-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.table-wrap::-webkit-scrollbar { width: 7px; height: 7px; }
+.table-wrap::-webkit-scrollbar-track { background: transparent; }
+.table-wrap::-webkit-scrollbar-corner { background: transparent; }
+.table-wrap::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 4px;
+}
+.table-wrap::-webkit-scrollbar-thumb:hover {
+  background: var(--blue-bright);
+}
+table { width: 100%; min-width: 1200px; border-collapse: collapse; font-size: 13px; }
 thead { position: sticky; top: 0; z-index: 10; }
 thead th {
   background: var(--surface2);
