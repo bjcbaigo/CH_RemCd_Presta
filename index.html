@@ -828,6 +828,9 @@ function toggleTheme() {
 }
 
 function clean(v) { return (v ?? '').toString().trim(); }
+function remitoEmpiezaConX(p) {
+  return clean(p.n_remito).toUpperCase().startsWith('X');
+}
 function money(v) { return Number(v||0).toLocaleString('es-AR',{style:'currency',currency:'ARS',maximumFractionDigits:0}); }
 function estadoRemito(p) {
   const est = clean(p.estado_remito_cd).toUpperCase();
@@ -992,10 +995,11 @@ function setModo(modo) {
 }
 
 function updateModeCounters() {
-  const total = pedidos.length;
-  const factPend = pedidos.filter(p => estadoRemito(p) === 'FACTURADO_PENDIENTE_REMITIR').length;
-  const pendFact = pedidos.filter(p => estadoRemito(p) === 'PENDIENTE_FACTURAR').length;
-  const remitidos = pedidos.filter(p => estadoRemito(p) === 'REMITIDO').length;
+  const baseVisible = pedidos.filter(p => !remitoEmpiezaConX(p));
+  const total = baseVisible.length;
+  const factPend = baseVisible.filter(p => estadoRemito(p) === 'FACTURADO_PENDIENTE_REMITIR').length;
+  const pendFact = baseVisible.filter(p => estadoRemito(p) === 'PENDIENTE_FACTURAR').length;
+  const remitidos = baseVisible.filter(p => estadoRemito(p) === 'REMITIDO').length;
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
   set('cntTodos', total);
   set('cntFacturadosPendientes', factPend);
@@ -1038,7 +1042,7 @@ async function loadData() {
     pedidos = res.pedidos || [];
     selectedOca.clear();
     updateOcaSelectedCount();
-    const canales = [...new Set(pedidos.map(p=>clean(p.usuario_tienda_vendedor)).filter(Boolean))].sort();
+    const canales = [...new Set(pedidos.filter(p => !remitoEmpiezaConX(p)).map(p=>clean(p.usuario_tienda_vendedor)).filter(Boolean))].sort();
     const sel = document.getElementById('filterCanal');
     sel.innerHTML = '<option value="">Todos los canales</option>' + canales.map(c=>`<option value="${c}">${c}</option>`).join('');
     document.getElementById('lastUpdate').textContent =
@@ -1071,6 +1075,7 @@ function render() {
   updateModeCounters();
 
   const filtered = pedidos.filter(p => {
+    if (remitoEmpiezaConX(p)) return false;
     const blob = [p.nro_pedido,p.order_id_tienda,p.order_nro_tienda,p.cliente_entrega,
       p.email_comprador,p.localidad_entrega,p.direccion_entrega,
       p.telefono1_entrega,p.telefono_movil_wa,p.usuario_tienda_vendedor].join(' ').toLowerCase();
@@ -1086,7 +1091,7 @@ function render() {
   document.getElementById('kpiDemorados').textContent   = filtered.filter(p=>p.criticidad==='DEMORADO').length;
   document.getElementById('kpiAtencion').textContent    = filtered.filter(p=>p.criticidad==='ATENCION').length;
   document.getElementById('kpiPreparacion').textContent = filtered.filter(p=>p.estado_operador==='EN_PREPARACION').length;
-  document.getElementById('kpiRemitidos').textContent   = pedidos.filter(p=>estadoRemito(p)==='REMITIDO').length;
+  document.getElementById('kpiRemitidos').textContent   = filtered.filter(p=>estadoRemito(p)==='REMITIDO').length;
 
   const tbody = document.getElementById('tbody');
   tbody.innerHTML = '';
