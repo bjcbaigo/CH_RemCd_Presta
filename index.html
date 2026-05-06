@@ -900,9 +900,11 @@ function encodeWindows1252(str) {
   }
   return new Uint8Array(bytes);
 }
-function buildOcaRow(p) {
+function buildOcaRow(p, index) {
   const nom = splitNombreApellido(p.cliente_entrega);
   const dir = splitCalleNumero(p.direccion_entrega);
+  const ordenCanal = clean(p.order_id_tienda) || clean(p.ORDER_ID_TIENDA) || clean(p.orden_canal) || clean(p.numero_orden_web) || clean(p.order_nro_tienda) || clean(p.nro_pedido) || clean(p.n_remito);
+  const retiroContacto = 'despachador2@chemesonline.com.ar';
   const obs = [
     `Pedido ${clean(p.nro_pedido)}`,
     `Orden ${clean(p.order_id_tienda)}`,
@@ -926,28 +928,28 @@ function buildOcaRow(p) {
     clean(p.provincia_entrega) || clean(p.cod_provincia_entrega),
     telefonoOca(p),
     clean(p.email_entrega) || clean(p.email_comprador),
-    'av presidente peron',
-    '802',
+    'Allende Lezama',
+    '3750',
     '0',
     '',
     '34826349113',
     '3550',
     'vera',
     'santa fe',
-    '',
+    retiroContacto,
     '1',
     '4',
     '22',
     '24',
     '53',
     formatOcaMoney(p.total_orden || p.total_pedi_con_impuestos || p.importe_factura),
-    clean(p.n_remito),
+    ordenCanal,
     '402901',
-    '',
+    retiroContacto,
     '1',
     '1',
     obs,
-    '1'
+    String(index + 1)
   ];
 }
 function generarCsvOcaSeleccionados() {
@@ -967,7 +969,7 @@ function generarCsvOcaSeleccionados() {
   ];
 
   const lines = [headers.map(csvEscape).join(';')];
-  seleccionados.forEach(p => lines.push(buildOcaRow(p).map(csvEscape).join(';')));
+  seleccionados.forEach((p, index) => lines.push(buildOcaRow(p, index).map(csvEscape).join(';')));
   const csv = lines.join('\r\n');
   const bytes = encodeWindows1252(csv);
   const blob = new Blob([bytes], { type: 'text/csv;charset=windows-1252' });
