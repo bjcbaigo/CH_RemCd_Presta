@@ -328,6 +328,56 @@ button:active { transform: scale(.97); }
 }
 .oca-check:disabled { opacity: .35; cursor: not-allowed; }
 
+/* Botón DESMARCAR */
+.btn-deselect {
+  background: rgba(129,140,248,.12);
+  color: var(--violet);
+  border: 1px solid rgba(129,140,248,.3);
+}
+.btn-deselect:hover {
+  background: rgba(129,140,248,.22);
+  border-color: rgba(129,140,248,.5);
+}
+
+/* Botón LIMPIAR filtros */
+.btn-clear {
+  background: rgba(245,158,11,.10);
+  color: var(--yellow);
+  border: 1px solid rgba(245,158,11,.28);
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn-clear:hover {
+  background: rgba(245,158,11,.20);
+  border-color: rgba(245,158,11,.45);
+}
+.btn-clear svg { width: 13px; height: 13px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
+
+/* Separador visual en toolbar */
+.toolbar-sep {
+  width: 1px; height: 28px;
+  background: var(--border-strong);
+  flex-shrink: 0;
+  margin: 0 2px;
+}
+
+/* Badge contador OCA con indicador activo */
+#ocaSelectedCount {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 18px;
+  background: rgba(6,182,212,.25);
+  border-radius: 10px;
+  font-family: var(--font-mono);
+  font-size: 11px; font-weight: 500;
+  padding: 0 5px;
+  margin-left: 4px;
+  transition: background .2s;
+}
+#ocaSelectedCount.has-selection {
+  background: var(--teal);
+  color: #fff;
+  box-shadow: 0 0 8px rgba(6,182,212,.4);
+}
+
 /* MODE TOGGLE */
 .mode-toggle {
   display: inline-flex; align-items: center; gap: 3px;
@@ -752,6 +802,13 @@ textarea:focus { border-color: var(--blue-bright); box-shadow: var(--glow); }
       <option value="LISTO_PARA_REMITIR">Listo para remitir</option>
     </select>
     <select id="filterCanal" onchange="render()"><option value="">Todos los canales</option></select>
+    <div class="toolbar-sep"></div>
+    <button class="btn-clear" onclick="limpiarFiltros()" title="Resetear todos los filtros">
+      <svg viewBox="0 0 14 14" style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;vertical-align:middle"><line x1="1" y1="1" x2="13" y2="13"/><line x1="13" y1="1" x2="1" y2="13"/></svg>
+      Limpiar
+    </button>
+    <div class="toolbar-sep"></div>
+    <button class="btn-deselect" onclick="desmarcarTodos()" title="Quitar todos los ticks de seleccion OCA">✕ Desmarcar</button>
     <button class="btn-primary" onclick="loadData()">↻ Actualizar</button>
     <button class="oca-btn" onclick="generarCsvOcaSeleccionados()">Generar CSV OCA <span id="ocaSelectedCount">0</span></button>
   </div>
@@ -878,7 +935,25 @@ function toggleOcaSelect(id, checked) {
 
 function updateOcaSelectedCount() {
   const el = document.getElementById('ocaSelectedCount');
-  if (el) el.textContent = selectedOca.size;
+  if (el) {
+    el.textContent = selectedOca.size;
+    el.classList.toggle('has-selection', selectedOca.size > 0);
+  }
+}
+
+function desmarcarTodos() {
+  selectedOca.clear();
+  // desmarcar visualmente todos los checkboxes visibles
+  document.querySelectorAll('.oca-check').forEach(cb => { cb.checked = false; });
+  updateOcaSelectedCount();
+}
+
+function limpiarFiltros() {
+  document.getElementById('search').value = '';
+  document.getElementById('filterCrit').value = '';
+  document.getElementById('filterEstado').value = '';
+  document.getElementById('filterCanal').value = '';
+  setModo(''); // resetea modo toggle a "Todos"
 }
 
 function normalizarTextoOca(v) { return clean(v).replace(/\s+/g, ' ').trim(); }
