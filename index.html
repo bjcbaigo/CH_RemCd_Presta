@@ -874,7 +874,9 @@ textarea:focus { border-color: var(--blue-bright); box-shadow: var(--glow); }
 </div>
 
 <script>
-const GAS = 'https://script.google.com/macros/s/AKfycbxaRLXkRW_hejF3gr8uHuSHvgVbibCAlLfjnpR36K9QeXDykicWU-0TaUapi9eSsE5V/exec';
+// Ruta al JSON generado por el PowerShell (mismo directorio que el HTML)
+const JSON_FILE = 'pedidos_cd_pendientes.json';
+
 let pedidos = [], selectedPedido = null;
 const selectedOca = new Set();
 
@@ -996,7 +998,8 @@ function buildOcaRow(p, index) {
   const nom = splitNombreApellido(p.cliente_entrega);
   const dir = splitCalleNumero(p.direccion_entrega);
   const ordenCanal = clean(p.order_id_tienda) || clean(p.ORDER_ID_TIENDA) || clean(p.orden_canal) || clean(p.numero_orden_web) || clean(p.order_nro_tienda) || clean(p.nro_pedido) || clean(p.n_remito);
-  const retiroContacto = 'despachador2@chemesonline.com.ar';
+  const retiroContacto = 'Despachador CD';
+  const retiroEmail    = 'despachador2@chemesonline.com.ar';
   const obs = [
     `Pedido ${clean(p.nro_pedido)}`,
     `Orden ${clean(p.order_id_tienda)}`,
@@ -1010,8 +1013,8 @@ function buildOcaRow(p, index) {
     nom.apellido,
     nom.nombre,
     'dni',
-    clean(p.order_id_tienda),
-    dir.calle,
+    documentoDestinatarioOca(p),
+    ocaLimit(dir.calle, 30),
     dir.numero,
     '0',
     '0',
@@ -1037,10 +1040,10 @@ function buildOcaRow(p, index) {
     formatOcaMoney(p.total_orden || p.total_pedi_con_impuestos || p.importe_factura),
     ordenCanal,
     '402901',
-    retiroContacto,
+    retiroEmail,
     '1',
     '1',
-    obs,
+    ocaLimit(obs, 100),
     String(index + 1)
   ];
 }
@@ -1096,50 +1099,41 @@ function updateModeCounters() {
   set('cntRemitidos', remitidos);
 }
 
-function jsonp(url) {
-  return new Promise((resolve, reject) => {
-    const cb = 'cb_' + Date.now() + '_' + Math.floor(Math.random() * 99999);
-    let finished = false;
-
-    const script = document.createElement('script');
-
-    window[cb] = function(data) {
-      finished = true;
-      try { delete window[cb]; } catch(e) { window[cb] = undefined; }
-      if (script && script.parentNode) script.parentNode.removeChild(script);
-      resolve(data);
-    };
-
-    script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + cb;
-    document.body.appendChild(script);
-
-    setTimeout(() => {
-      if (!finished) {
-        try { delete window[cb]; } catch(e) { window[cb] = undefined; }
-        if (script && script.parentNode) script.parentNode.removeChild(script);
-        reject(new Error('No se ejecutó el callback JSONP. Revisar URL GAS, permisos o caché del navegador.'));
-      }
-    }, 20000);
-  });
-}
-
 async function loadData() {
-  document.getElementById('lastUpdate').textContent = 'Cargando...';
+  const lastUpdateEl = document.getElementById('lastUpdate');
+  lastUpdateEl.textContent = 'Cargando...';
   try {
-    const res = await jsonp(`${GAS}?api=pedidos&_=${Date.now()}`);
-    if (!res.ok) { alert('Error: '+res.error); return; }
-    pedidos = res.pedidos || [];
+    // Agrega timestamp para evitar cache del navegador
+    const res = await fetch(`${JSON_FILE}?_=${Date.now()}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status} al leer ${JSON_FILE}`);
+    const data = await res.json();
+
+    pedidos = data.pedidos || [];
     selectedOca.clear();
     updateOcaSelectedCount();
-    const canales = [...new Set(pedidos.filter(p => !remitoEmpiezaConX(p) && esTalonario234(p)).map(p=>clean(p.usuario_tienda_vendedor)).filter(Boolean))].sort();
+
+    const canales = [...new Set(
+      pedidos
+        .filter(p => !remitoEmpiezaConX(p) && esTalonario234(p))
+        .map(p => clean(p.usuario_tienda_vendedor))
+        .filter(Boolean)
+    )].sort();
     const sel = document.getElementById('filterCanal');
-    sel.innerHTML = '<option value="">Todos los canales</option>' + canales.map(c=>`<option value="${c}">${c}</option>`).join('');
-    document.getElementById('lastUpdate').textContent =
-      `Última actualización: ${res.generado||'-'} - ${res.cantidad||pedidos.length} registros`;
+    sel.innerHTML = '<option value="">Todos los canales</option>' +
+      canales.map(c => `<option value="${c}">${c}</option>`).join('');
+
+    lastUpdateEl.textContent =
+      `Ultima actualizacion: ${data.generado || '-'} · ${data.cantidad ?? pedidos.length} registros`;
+
     render();
-  } catch(err) {
-    document.getElementById('lastUpdate').textContent = 'Error de conexion';
-    alert('Error de conexion: '+err.message);
+  } catch (err) {
+    lastUpdateEl.textContent = 'Error al cargar JSON';
+    alert(
+      'No se pudo cargar el archivo de datos.\n\n' +
+      'Verificar que pedidos_cd_pendientes.json existe en el mismo directorio que este HTML ' +
+      'y que el servidor local esta corriendo (no se puede abrir con file://).\n\n' +
+      'Detalle: ' + err.message
+    );
   }
 }
 
@@ -1229,11 +1223,15 @@ function openModal(id) {
         <div class="order-cell"><b>Pedido Tango</b><div class="order-value">${clean(p.nro_pedido)}</div></div>
         <div class="order-cell"><b>Orden Web</b><div class="order-value">#${clean(p.order_id_tienda)}</div></div>
         <div class="order-cell"><b>Referencia</b><div class="order-value">${clean(p.order_nro_tienda)}</div></div>
-        <div class="order-cell"><b>Canal</b><div class="order-value">${clean(p.usuario_tienda_vendedor)}</div></div>
+        <div class="order-cell"><b>Canal / Tienda</b><div class="order-value">${clean(p.usuario_tienda_vendedor)}${clean(p.tienda) ? ' · '+clean(p.tienda) : ''}</div></div>
         <div class="order-cell"><b>Fecha orden</b><div class="order-value">${clean(p.fecha_orden)}</div></div>
-        <div class="order-cell"><b>Horas</b><div class="order-value">${clean(p.horas_pendiente)}</div></div>
+        <div class="order-cell"><b>Fecha pedido</b><div class="order-value">${clean(p.fecha_pedi) || '—'}${clean(p.hora) ? ' '+clean(p.hora) : ''}</div></div>
+        <div class="order-cell"><b>Horas pendiente</b><div class="order-value">${clean(p.horas_pendiente)}</div></div>
         <div class="order-cell"><b>Criticidad</b><span class="badge ${clean(p.criticidad)}">${clean(p.criticidad)}</span></div>
         <div class="order-cell"><b>Estado CD</b><span class="badge ${estadoRemito(p)}">${estadoRemitoLabel(estadoRemito(p))}</span></div>
+        <div class="order-cell"><b>Factura</b><div class="order-value">${clean(p.t_comp_factura) && clean(p.n_comp_factura) ? clean(p.t_comp_factura)+' '+clean(p.n_comp_factura) : '—'}</div></div>
+        <div class="order-cell"><b>Importe factura</b><div class="order-value" style="color:var(--green)">${p.importe_factura ? money(p.importe_factura) : '—'}</div></div>
+        <div class="order-cell"><b>N° remito</b><div class="order-value" style="color:var(--teal)">${clean(p.n_remito) || '—'}</div></div>
       </div>
     </div>
 
@@ -1260,17 +1258,23 @@ function openModal(id) {
         <div class="record-col">
           <div class="record-line"><b>Total orden</b><span style="color:var(--green);font-family:var(--font-mono)">${money(p.total_orden)}</span></div>
           <div class="record-line"><b>Total Tango</b>${money(p.total_pedi_con_impuestos)}</div>
-          <div class="record-line"><b>Recargo envío</b>${money(p.recargo_envio)}</div>
-          <div class="record-line"><b>Envío domicilio</b>${clean(p.envio_domicilio)}</div>
+          <div class="record-line"><b>Recargo envio</b>${money(p.recargo_envio)}</div>
+          <div class="record-line"><b>Envio domicilio</b>${clean(p.envio_domicilio)}</div>
           <div class="record-line"><b>N° remito</b>${clean(p.n_remito) || '—'}</div>
+          <div class="record-line"><b>Factura</b>${clean(p.t_comp_factura) && clean(p.n_comp_factura) ? clean(p.t_comp_factura)+' '+clean(p.n_comp_factura) : '—'}</div>
+          <div class="record-line"><b>Fecha factura</b>${clean(p.fecha_factura) || '—'}</div>
+          <div class="record-line"><b>Importe factura</b>${p.importe_factura ? money(p.importe_factura) : '—'}</div>
         </div>
 
         <div class="record-col">
           <div class="record-line"><b>Estado operador</b>${estadoLabel(p.estado_operador)}</div>
           <div class="record-line"><b>Usuario operador</b>${clean(p.usuario_operador) || '—'}</div>
-          <div class="record-line"><b>Fecha acción</b>${clean(p.fecha_accion_operador) || clean(p.fecha_ultima_accion) || '—'}</div>
+          <div class="record-line"><b>Fecha accion</b>${clean(p.fecha_marcado) || clean(p.fecha_ultima_accion) || '—'}</div>
           <div class="record-line"><b>Estado Presta</b>${clean(p.estado_orden)}</div>
           <div class="record-line"><b>Estado Tango</b>${clean(p.estado_tango)}</div>
+          <div class="record-line"><b>Fecha pedido</b>${clean(p.fecha_pedi) || '—'}</div>
+          <div class="record-line"><b>Hora</b>${clean(p.hora) || '—'}</div>
+          <div class="record-line"><b>Tienda</b>${clean(p.tienda) || '—'}</div>
         </div>
       </div>
     </div>
@@ -1301,16 +1305,22 @@ function openModal(id) {
 function closeModal() { selectedPedido=null; document.getElementById('modal').classList.remove('open'); }
 function overlayClick(e) { if(e.target===document.getElementById('modal')) closeModal(); }
 
-async function saveEstado() {
-  if(!selectedPedido) return;
-  const estado=document.getElementById('modalEstado').value;
-  const obs=document.getElementById('modalObs').value||'';
-  const p=selectedPedido;
-  const params=new URLSearchParams({api:'marcar',id_gva21:clean(p.id_gva21),nro_pedido:clean(p.nro_pedido),order_id_tienda:clean(p.order_id_tienda),order_nro_tienda:clean(p.order_nro_tienda),estado_operador:estado,observacion:obs,usuario:'OPERADOR_CD',_:Date.now()});
-  const res=await jsonp(`${GAS}?${params.toString()}`);
-  if(!res.ok){alert('Error al guardar: '+res.error);return;}
+function saveEstado() {
+  // Con fuente JSON local no hay endpoint para persistir.
+  // Se actualiza el estado en memoria para que la vista refleje el cambio
+  // hasta el proximo Actualizar (que recarga el JSON del disco).
+  if (!selectedPedido) return;
+  const estado = document.getElementById('modalEstado').value;
+  const obs    = document.getElementById('modalObs').value || '';
+
+  // Actualizar objeto en el array en memoria
+  const idx = pedidos.findIndex(p => String(p.id_gva21) === String(selectedPedido.id_gva21));
+  if (idx !== -1) {
+    pedidos[idx].estado_operador = estado;
+    pedidos[idx].observacion     = obs;
+  }
   closeModal();
-  await loadData();
+  render();
 }
 
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
