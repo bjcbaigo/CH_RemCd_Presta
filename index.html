@@ -874,8 +874,11 @@ textarea:focus { border-color: var(--blue-bright); box-shadow: var(--glow); }
 </div>
 
 <script>
-// Ruta al JSON generado por el PowerShell (mismo directorio que el HTML)
-const JSON_FILE = 'pedidos_cd_pendientes.json';
+// ─── CONFIGURACION ────────────────────────────────────────────────────────────
+// GAS que lee pedidos_cd_pendientes.json desde Google Drive y lo sirve como JSONP
+// Mismo patrón que todos los dashboards CHEMES (Comercial, Sucursales, OCA, etc.)
+const GAS = 'https://script.google.com/macros/s/AKfycbxaRLXkRW_hejF3gr8uHuSHvgVbibCAlLfjnpR36K9QeXDykicWU-0TaUapi9eSsE5V/exec';
+// ─────────────────────────────────────────────────────────────────────────────
 
 let pedidos = [], selectedPedido = null;
 const selectedOca = new Set();
@@ -1099,16 +1102,38 @@ function updateModeCounters() {
   set('cntRemitidos', remitidos);
 }
 
+// ─── JSONP helper (mismo patrón que todos los dashboards CHEMES) ──────────────
+function jsonp(url) {
+  return new Promise((resolve, reject) => {
+    const cb = 'cb_' + Date.now() + '_' + Math.floor(Math.random() * 99999);
+    let finished = false;
+    const script = document.createElement('script');
+    window[cb] = function(data) {
+      finished = true;
+      try { delete window[cb]; } catch(e) { window[cb] = undefined; }
+      if (script && script.parentNode) script.parentNode.removeChild(script);
+      resolve(data);
+    };
+    script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + cb;
+    document.body.appendChild(script);
+    setTimeout(() => {
+      if (!finished) {
+        try { delete window[cb]; } catch(e) { window[cb] = undefined; }
+        if (script && script.parentNode) script.parentNode.removeChild(script);
+        reject(new Error('No se ejecuto el callback JSONP. Verificar URL GAS y permisos.'));
+      }
+    }, 20000);
+  });
+}
+
 async function loadData() {
   const lastUpdateEl = document.getElementById('lastUpdate');
   lastUpdateEl.textContent = 'Cargando...';
   try {
-    // Agrega timestamp para evitar cache del navegador
-    const res = await fetch(`${JSON_FILE}?_=${Date.now()}`);
-    if (!res.ok) throw new Error(`HTTP ${res.status} al leer ${JSON_FILE}`);
-    const data = await res.json();
+    const res = await jsonp(`${GAS}?api=pedidos&_=${Date.now()}`);
+    if (!res.ok) { alert('Error GAS: ' + res.error); return; }
 
-    pedidos = data.pedidos || [];
+    pedidos = res.pedidos || [];
     selectedOca.clear();
     updateOcaSelectedCount();
 
@@ -1123,17 +1148,12 @@ async function loadData() {
       canales.map(c => `<option value="${c}">${c}</option>`).join('');
 
     lastUpdateEl.textContent =
-      `Ultima actualizacion: ${data.generado || '-'} · ${data.cantidad ?? pedidos.length} registros`;
+      `Ultima actualizacion: ${res.generado || '-'} · ${res.cantidad ?? pedidos.length} registros`;
 
     render();
   } catch (err) {
-    lastUpdateEl.textContent = 'Error al cargar JSON';
-    alert(
-      'No se pudo cargar el archivo de datos.\n\n' +
-      'Verificar que pedidos_cd_pendientes.json existe en el mismo directorio que este HTML ' +
-      'y que el servidor local esta corriendo (no se puede abrir con file://).\n\n' +
-      'Detalle: ' + err.message
-    );
+    lastUpdateEl.textContent = 'Error de conexion';
+    alert('Error al cargar datos desde GAS:\n\n' + err.message);
   }
 }
 
