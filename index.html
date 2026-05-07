@@ -962,6 +962,16 @@ function limpiarFiltros() {
 }
 
 function normalizarTextoOca(v) { return clean(v).replace(/\s+/g, ' ').trim(); }
+function ocaLimit(v, max) { return normalizarTextoOca(v).slice(0, max); }
+// Destinatario - Documento: va la referencia ALFABETICA de la orden (ej: LQVSRPWGX)
+// NO el número de orden numérico. Fuente: order_nro_tienda
+function documentoDestinatarioOca(p) {
+  return ocaLimit(
+    clean(p.order_nro_tienda) ||
+    clean(p.ORDER_NRO_TIENDA),
+    30
+  );
+}
 function splitNombreApellido(nombreCompleto) {
   const n = normalizarTextoOca(nombreCompleto);
   if (!n) return { apellido: '', nombre: '' };
@@ -1001,8 +1011,9 @@ function buildOcaRow(p, index) {
   const nom = splitNombreApellido(p.cliente_entrega);
   const dir = splitCalleNumero(p.direccion_entrega);
   const ordenCanal = clean(p.order_id_tienda) || clean(p.ORDER_ID_TIENDA) || clean(p.orden_canal) || clean(p.numero_orden_web) || clean(p.order_nro_tienda) || clean(p.nro_pedido) || clean(p.n_remito);
-  const retiroContacto = 'Despachador CD';
-  const retiroEmail    = 'despachador2@chemesonline.com.ar';
+  const retiroContacto = ocaLimit('3482649113', 30);   // Retiro - Contacto: tel CD
+  const retiroTel      = '3482649113';                  // Retiro - Teléfono
+  const retiroEmail    = '3483-550342';                 // Retiro - Email
   const obs = [
     `Pedido ${clean(p.nro_pedido)}`,
     `Orden ${clean(p.order_id_tienda)}`,
@@ -1013,41 +1024,41 @@ function buildOcaRow(p, index) {
   ].filter(Boolean).join(' | ');
 
   return [
-    nom.apellido,
-    nom.nombre,
-    'dni',
-    documentoDestinatarioOca(p),
-    ocaLimit(dir.calle, 30),
-    dir.numero,
-    '0',
-    '0',
-    clean(p.codigo_postal_entrega),
-    clean(p.localidad_entrega),
-    clean(p.provincia_entrega) || clean(p.cod_provincia_entrega),
-    telefonoOca(p),
-    clean(p.email_entrega) || clean(p.email_comprador),
-    'Allende Lezama',
-    '3750',
-    '0',
-    '',
-    '34826349113',
-    '3550',
-    'vera',
-    'santa fe',
-    retiroContacto,
-    '1',
-    '4',
-    '22',
-    '24',
-    '53',
-    formatOcaMoney(p.total_orden || p.total_pedi_con_impuestos || p.importe_factura),
-    ordenCanal,
-    '402901',
-    retiroEmail,
-    '1',
-    '1',
-    ocaLimit(obs, 100),
-    String(index + 1)
+    nom.apellido,                                               // Destinatario - Apellido
+    nom.nombre,                                                 // Destinatario - Nombre
+    'dni',                                                      // Destinatario - TipoDocumento
+    documentoDestinatarioOca(p),                                // Destinatario - Documento (ref alfabetica)
+    ocaLimit(dir.calle, 30),                                    // Destinatario - Calle (max 30)
+    dir.numero,                                                 // Destinatario - Número
+    '0',                                                        // Destinatario - Piso
+    '0',                                                        // Destinatario - Depto.
+    clean(p.codigo_postal_entrega),                             // Destinatario - Código Postal
+    clean(p.localidad_entrega),                                 // Destinatario - Localidad
+    clean(p.provincia_entrega) || clean(p.cod_provincia_entrega), // Destinatario - Provincia
+    telefonoOca(p),                                             // Destinatario - Teléfono
+    clean(p.email_entrega) || clean(p.email_comprador),         // Destinatario - Email
+    'Allende Lezama',                                           // Retiro - Calle
+    '3750',                                                     // Retiro - Número
+    '0',                                                        // Retiro - Piso
+    '',                                                         // Retiro - Depto.
+    retiroTel,                                                  // Retiro - Teléfono: 3482649113
+    '3550',                                                     // Retiro - Código Postal
+    'vera',                                                     // Retiro - Localidad
+    'santa fe',                                                 // Retiro - Provincia
+    retiroContacto,                                             // Retiro - Contacto: 3482649113
+    '1',                                                        // Paquete - Cantidad
+    '4',                                                        // Paquete - Peso [kg]
+    '22',                                                       // Paquete - Alto [cm]
+    '24',                                                       // Paquete - Largo [cm]
+    '53',                                                       // Paquete - Ancho [cm]
+    formatOcaMoney(p.total_orden || p.total_pedi_con_impuestos || p.importe_factura), // Valor Asegurado
+    ordenCanal,                                                 // Número de Remito
+    '402901',                                                   // Número de Operativa
+    retiroEmail,                                                // Retiro - Email: 3483-550342
+    '1',                                                        // Retiro - Dias
+    '1',                                                        // Retiro - Franja Horaria
+    ocaLimit(obs, 100),                                         // Observaciones (max 100)
+    String(index + 1)                                           // Cantidad Remitos
   ];
 }
 function generarCsvOcaSeleccionados() {
