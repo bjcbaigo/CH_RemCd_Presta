@@ -703,6 +703,36 @@ textarea:focus { border-color: var(--blue-bright); box-shadow: var(--glow); }
 
 .empty-row td { text-align: center; padding: 48px; color: var(--muted); font-size: 13px; }
 
+/* ── Separador de tanda por fecha ── */
+.date-sep td {
+  padding: 0;
+  border-bottom: none;
+}
+.date-sep-inner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px 4px;
+  background: var(--bg);
+}
+.date-sep-line {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.date-sep-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+  padding: 2px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+}
+
 /* SCROLLBAR */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -961,6 +991,11 @@ function limpiarFiltros() {
 }
 
 function normalizarTextoOca(v) { return clean(v).replace(/\s+/g, ' ').trim(); }
+function ocaLimit(v, max) { return normalizarTextoOca(v).slice(0, max); }
+// Destinatario - Documento: referencia ALFABETICA de la orden (ej: LQVSRPWGX), NO el número
+function documentoDestinatarioOca(p) {
+  return ocaLimit(clean(p.order_nro_tienda) || clean(p.ORDER_NRO_TIENDA), 30);
+}
 function splitNombreApellido(nombreCompleto) {
   const n = normalizarTextoOca(nombreCompleto);
   if (!n) return { apellido: '', nombre: '' };
@@ -1000,8 +1035,9 @@ function buildOcaRow(p, index) {
   const nom = splitNombreApellido(p.cliente_entrega);
   const dir = splitCalleNumero(p.direccion_entrega);
   const ordenCanal = clean(p.order_id_tienda) || clean(p.ORDER_ID_TIENDA) || clean(p.orden_canal) || clean(p.numero_orden_web) || clean(p.order_nro_tienda) || clean(p.nro_pedido) || clean(p.n_remito);
-  const retiroContacto = 'Despachador CD';
-  const retiroEmail    = 'despachador2@chemesonline.com.ar';
+  const retiroContacto = ocaLimit('3482649113', 30); // Retiro - Contacto (max 30)
+  const retiroTel      = '3482649113';               // Retiro - Teléfono
+  const retiroEmail    = '3483-550342';              // Retiro - Email
   const obs = [
     `Pedido ${clean(p.nro_pedido)}`,
     `Orden ${clean(p.order_id_tienda)}`,
@@ -1012,41 +1048,41 @@ function buildOcaRow(p, index) {
   ].filter(Boolean).join(' | ');
 
   return [
-    nom.apellido,
-    nom.nombre,
-    'dni',
-    documentoDestinatarioOca(p),
-    ocaLimit(dir.calle, 30),
-    dir.numero,
-    '0',
-    '0',
-    clean(p.codigo_postal_entrega),
-    clean(p.localidad_entrega),
-    clean(p.provincia_entrega) || clean(p.cod_provincia_entrega),
-    telefonoOca(p),
-    clean(p.email_entrega) || clean(p.email_comprador),
-    'Allende Lezama',
-    '3750',
-    '0',
-    '',
-    '34826349113',
-    '3550',
-    'vera',
-    'santa fe',
-    retiroContacto,
-    '1',
-    '4',
-    '22',
-    '24',
-    '53',
-    formatOcaMoney(p.total_orden || p.total_pedi_con_impuestos || p.importe_factura),
-    ordenCanal,
-    '402901',
-    retiroEmail,
-    '1',
-    '1',
-    ocaLimit(obs, 100),
-    String(index + 1)
+    nom.apellido,                                                              // Destinatario - Apellido
+    nom.nombre,                                                                // Destinatario - Nombre
+    'dni',                                                                     // Destinatario - TipoDocumento
+    documentoDestinatarioOca(p),                                               // Destinatario - Documento (ref alfabetica)
+    ocaLimit(dir.calle, 30),                                                   // Destinatario - Calle (max 30)
+    dir.numero,                                                                // Destinatario - Número
+    '0',                                                                       // Destinatario - Piso
+    '0',                                                                       // Destinatario - Depto.
+    clean(p.codigo_postal_entrega),                                            // Destinatario - Código Postal
+    clean(p.localidad_entrega),                                                // Destinatario - Localidad
+    clean(p.provincia_entrega) || clean(p.cod_provincia_entrega),              // Destinatario - Provincia
+    telefonoOca(p),                                                            // Destinatario - Teléfono
+    clean(p.email_entrega) || clean(p.email_comprador),                        // Destinatario - Email
+    'Allende Lezama',                                                          // Retiro - Calle
+    '3750',                                                                    // Retiro - Número
+    '0',                                                                       // Retiro - Piso
+    '',                                                                        // Retiro - Depto.
+    retiroTel,                                                                 // Retiro - Teléfono
+    '3550',                                                                    // Retiro - Código Postal
+    'vera',                                                                    // Retiro - Localidad
+    'santa fe',                                                                // Retiro - Provincia
+    retiroContacto,                                                            // Retiro - Contacto
+    '1',                                                                       // Paquete - Cantidad
+    '4',                                                                       // Paquete - Peso [kg]
+    '22',                                                                      // Paquete - Alto [cm]
+    '24',                                                                      // Paquete - Largo [cm]
+    '53',                                                                      // Paquete - Ancho [cm]
+    formatOcaMoney(p.total_orden || p.total_pedi_con_impuestos || p.importe_factura), // Valor Asegurado
+    ordenCanal,                                                                // Número de Remito
+    '402901',                                                                  // Número de Operativa
+    retiroEmail,                                                               // Retiro - Email
+    '1',                                                                       // Retiro - Dias
+    '1',                                                                       // Retiro - Franja Horaria
+    ocaLimit(obs, 100),                                                        // Observaciones (max 100)
+    String(index + 1)                                                          // Cantidad Remitos
   ];
 }
 function generarCsvOcaSeleccionados() {
@@ -1203,7 +1239,42 @@ function render() {
   tbody.innerHTML = '';
   if(!filtered.length) { tbody.innerHTML='<tr class="empty-row"><td colspan="13">Sin resultados para los filtros aplicados</td></tr>'; return; }
 
+  // Función para obtener la clave de tanda (fecha del pedido Tango)
+  function tandaKey(p) {
+    const f = clean(p.fecha_pedi) || clean(p.fecha_factura) || clean(p.fecha_orden) || '';
+    if (!f || f === '00000000' || f === '01/01/1800') return 'Sin fecha';
+    // Normalizar distintos formatos: YYYYMMDD, DD/MM/YYYY, YYYY-MM-DD
+    if (/^\d{8}$/.test(f)) {
+      return `${f.slice(6,8)}/${f.slice(4,6)}/${f.slice(0,4)}`;
+    }
+    return f.slice(0, 10); // tomar solo la parte de fecha
+  }
+
+  const DIAS = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  function tandaLabel(key) {
+    if (key === 'Sin fecha') return '— Sin fecha de emisión —';
+    // Intentar parsear para mostrar día de semana
+    const parts = key.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (parts) {
+      const d = new Date(parseInt(parts[3]), parseInt(parts[2])-1, parseInt(parts[1]));
+      if (!isNaN(d)) return `${DIAS[d.getDay()].toUpperCase()}  ${key}`;
+    }
+    return key;
+  }
+
+  let lastTanda = null;
+  const colCount = 13;
+
   filtered.forEach(p => {
+    // Insertar separador de tanda si cambia la fecha del pedido
+    const tanda = tandaKey(p);
+    if (tanda !== lastTanda) {
+      lastTanda = tanda;
+      const sep = document.createElement('tr');
+      sep.className = 'date-sep';
+      sep.innerHTML = `<td colspan="${colCount}"><div class="date-sep-inner"><div class="date-sep-line"></div><span class="date-sep-label">${tandaLabel(tanda)}</span><div class="date-sep-line"></div></div></td>`;
+      tbody.appendChild(sep);
+    }
     const tel = clean(p.telefono_movil_wa)||clean(p.telefono1_entrega)||clean(p.telefono2_entrega);
     const tr  = document.createElement('tr');
     tr.innerHTML = `
