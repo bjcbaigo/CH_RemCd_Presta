@@ -1239,62 +1239,85 @@ function render() {
   tbody.innerHTML = '';
   if(!filtered.length) { tbody.innerHTML='<tr class="empty-row"><td colspan="13">Sin resultados para los filtros aplicados</td></tr>'; return; }
 
-  // Funciones para separar visualmente por fecha real del movimiento.
-  // La fuente llega normalmente como ISO SQL: YYYY-MM-DD o YYYY-MM-DD HH:mm:ss.
-  // Se fuerza parseo manual para evitar que 2026-05-11 se interprete como 05/11/2026.
+  // Función para obtener la clave de tanda (fecha del pedido Tango).
+  // IMPORTANTE: no usar new Date('YYYY-MM-DD') ni parseo implícito porque el navegador
+  // puede interpretar la fecha con criterio MM/DD/YYYY o UTC y mostrar 05/11/2026.
   function normalizarFechaTanda(valor) {
     const f = clean(valor);
-    if (!f || f === '00000000' || f === '01/01/1800' || f.startsWith('1800-01-01')) return null;
+    if (!f || f === '00000000' || f === '01/01/1800' || f.startsWith('1800-01-01')) {
+      return { key: 'Sin fecha', label: '— Sin fecha de emisión —', y: null, m: null, d: null };
+    }
 
     let y, m, d;
 
-    // Formato SQL/ISO: 2026-05-11 o 2026-05-11 00:00:00
-    let match = f.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
-    if (match) {
-      y = Number(match[1]);
-      m = Number(match[2]);
-      d = Number(match[3]);
-    } else if (/^\d{8}$/.test(f)) {
-      // Formato compacto SQL: YYYYMMDD
-      y = Number(f.slice(0, 4));
-      m = Number(f.slice(4, 6));
-      d = Number(f.slice(6, 8));
-    } else {
-      // Formato argentino: DD/MM/YYYY
-      match = f.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-      if (match) {
-        d = Number(match[1]);
-        m = Number(match[2]);
-        y = Number(match[3]);
+    // Formato SQL/ISO: 2026-05-11 o 2026-05-11T00:00:00 o 2026-05-11 00:00:00
+    let iso = f.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) {
+      y = Number(iso[1]);
+      m = Number(iso[2]);
+      d = Number(iso[3]);
+    }
+
+    // Formato compacto Tango/SQL: 20260511
+    if (!y) {
+      let compact = f.match(/^(\d{4})(\d{2})(\d{2})$/);
+      if (compact) {
+        y = Number(compact[1]);
+        m = Number(compact[2]);
+        d = Number(compact[3]);
       }
     }
 
-    if (!y || !m || !d) return null;
+    // Formato argentino: 11/05/2026
+    if (!y) {
+      let ar = f.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+      if (ar) {
+        d = Number(ar[1]);
+        m = Number(ar[2]);
+        y = Number(ar[3]);
+      }
+    }
+
+    // Formato con guiones argentino: 11-05-2026
+    if (!y) {
+      let arDash = f.match(/^(\d{1,2})-(\d{1,2})-(\d{4})/);
+      if (arDash) {
+        d = Number(arDash[1]);
+        m = Number(arDash[2]);
+        y = Number(arDash[3]);
+      }
+    }
+
+    if (!y || !m || !d) {
+      return { key: f.slice(0, 10), label: f.slice(0, 10), y: null, m: null, d: null };
+    }
+
+    const dd = String(d).padStart(2, '0');
+    const mm = String(m).padStart(2, '0');
+    const yyyy = String(y);
     return {
-      y,
-      m,
-      d,
-      key: `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`,
-      label: `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}/${String(y).padStart(4, '0')}`
+      key: `${yyyy}-${mm}-${dd}`,
+      label: `${dd}/${mm}/${yyyy}`,
+      y, m, d
     };
   }
 
-  // Función para obtener la clave de tanda (fecha del pedido Tango)
   function tandaKey(p) {
-    const fecha = normalizarFechaTanda(p.fecha_pedi) || normalizarFechaTanda(p.fecha_factura) || normalizarFechaTanda(p.fecha_orden);
-    return fecha ? fecha.key : 'Sin fecha';
+    const valorFecha = clean(p.fecha_pedi) || clean(p.fecha_factura) || clean(p.fecha_orden) || '';
+    return normalizarFechaTanda(valorFecha).key;
   }
 
   const DIAS = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
   function tandaLabel(key) {
     if (key === 'Sin fecha') return '— Sin fecha de emisión —';
 
-    const fecha = normalizarFechaTanda(key);
-    if (!fecha) return key;
+    const info = normalizarFechaTanda(key);
+    if (info.y && info.m && info.d) {
+      const d = new Date(info.y, info.m - 1, info.d); // fecha local, sin parseo automático
+      return `${DIAS[d.getDay()].toUpperCase()}  ${info.label}`;
+    }
 
-    // Date local construido por partes: mes base cero. Evita inversión día/mes.
-    const d = new Date(fecha.y, fecha.m - 1, fecha.d);
-    return `${DIAS[d.getDay()].toUpperCase()} ${fecha.label}`;
+    return key;
   }
 
   let lastTanda = null;
