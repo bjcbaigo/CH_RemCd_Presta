@@ -1242,33 +1242,42 @@ function render() {
   // Función para obtener la clave de tanda (fecha del pedido Tango).
   // IMPORTANTE: no usar new Date('YYYY-MM-DD') ni parseo implícito porque el navegador
   // puede interpretar la fecha con criterio MM/DD/YYYY o UTC y mostrar 05/11/2026.
+  //
+  // Orden de detección (de más específico a más genérico):
+  //   1) Compacto Tango: YYYYMMDD (20260511)
+  //   2) ISO completo:   YYYY-MM-DD o YYYY-MM-DDTHH:MM:SS
+  //   3) AR con barras:  DD/MM/YYYY (los datos de Tango y AR usan siempre día primero)
+  //   4) AR con guiones: DD-MM-YYYY (sólo si el año NO está al inicio)
+  //
+  // Para fechas con barra '/' SIEMPRE se asume formato argentino DD/MM/YYYY,
+  // nunca MM/DD/YYYY, porque todos los orígenes (Tango, GAS, PrestaShop AR) usan ese orden.
   function normalizarFechaTanda(valor) {
     const f = clean(valor);
-    if (!f || f === '00000000' || f === '01/01/1800' || f.startsWith('1800-01-01')) {
+    if (!f || f === '00000000' || f === '01/01/1800' || f.startsWith('1800-01-01') || f.startsWith('1753-')) {
       return { key: 'Sin fecha', label: '— Sin fecha de emisión —', y: null, m: null, d: null };
     }
 
     let y, m, d;
 
-    // Formato SQL/ISO: 2026-05-11 o 2026-05-11T00:00:00 o 2026-05-11 00:00:00
-    let iso = f.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (iso) {
-      y = Number(iso[1]);
-      m = Number(iso[2]);
-      d = Number(iso[3]);
+    // 1) Formato compacto Tango/SQL: 20260511
+    let compact = f.match(/^(\d{4})(\d{2})(\d{2})$/);
+    if (compact) {
+      y = Number(compact[1]);
+      m = Number(compact[2]);
+      d = Number(compact[3]);
     }
 
-    // Formato compacto Tango/SQL: 20260511
+    // 2) Formato SQL/ISO: 2026-05-11 o 2026-05-11T00:00:00 o 2026-05-11 00:00:00
     if (!y) {
-      let compact = f.match(/^(\d{4})(\d{2})(\d{2})$/);
-      if (compact) {
-        y = Number(compact[1]);
-        m = Number(compact[2]);
-        d = Number(compact[3]);
+      let iso = f.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+      if (iso) {
+        y = Number(iso[1]);
+        m = Number(iso[2]);
+        d = Number(iso[3]);
       }
     }
 
-    // Formato argentino: 11/05/2026
+    // 3) Formato argentino con barras: 11/05/2026 (SIEMPRE día primero)
     if (!y) {
       let ar = f.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
       if (ar) {
@@ -1278,9 +1287,9 @@ function render() {
       }
     }
 
-    // Formato con guiones argentino: 11-05-2026
+    // 4) Formato argentino con guiones: 11-05-2026 (sólo si el primer grupo NO es año)
     if (!y) {
-      let arDash = f.match(/^(\d{1,2})-(\d{1,2})-(\d{4})/);
+      let arDash = f.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
       if (arDash) {
         d = Number(arDash[1]);
         m = Number(arDash[2]);
@@ -1292,6 +1301,15 @@ function render() {
       return { key: f.slice(0, 10), label: f.slice(0, 10), y: null, m: null, d: null };
     }
 
+    // Validación de rango: si el mes es > 12, el formato venía invertido (MM/DD vs DD/MM)
+    // y debemos intercambiar; si el día es > 31 también es inválido.
+    if (m > 12 && d <= 12) {
+      const tmp = m; m = d; d = tmp;
+    }
+    if (m < 1 || m > 12 || d < 1 || d > 31) {
+      return { key: f.slice(0, 10), label: f.slice(0, 10), y: null, m: null, d: null };
+    }
+
     const dd = String(d).padStart(2, '0');
     const mm = String(m).padStart(2, '0');
     const yyyy = String(y);
@@ -1300,6 +1318,20 @@ function render() {
       label: `${dd}/${mm}/${yyyy}`,
       y, m, d
     };
+  }
+
+  // Diagnóstico: muestra en consola los primeros valores crudos de fecha para depurar
+  // formatos que estén llegando desde el JSON sin que lo sepamos.
+  if (typeof window !== 'undefined' && !window.__diagFechasMostrado && Array.isArray(pedidos) && pedidos.length) {
+    window.__diagFechasMostrado = true;
+    const muestra = pedidos.slice(0, 5).map(p => ({
+      id_gva21: p.id_gva21,
+      fecha_pedi: p.fecha_pedi,
+      fecha_factura: p.fecha_factura,
+      fecha_orden: p.fecha_orden,
+      hora: p.hora
+    }));
+    console.log('[DIAG fechas] Primeras 5 muestras crudas:', muestra);
   }
 
   function tandaKey(p) {
