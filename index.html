@@ -1239,25 +1239,67 @@ function render() {
   tbody.innerHTML = '';
   if(!filtered.length) { tbody.innerHTML='<tr class="empty-row"><td colspan="13">Sin resultados para los filtros aplicados</td></tr>'; return; }
 
+  // Funciones para normalizar fechas sin depender del parseo automático del navegador.
+  // Evita el error visual 2026-05-11 -> 05/11/2026.
+  function parseFechaLocal(valor) {
+    const raw = clean(valor);
+    if (!raw || raw === '00000000' || raw === '01/01/1800') return null;
+
+    const fecha = raw.slice(0, 10).trim();
+    let y, m, d;
+
+    // Formato ISO / SQL: YYYY-MM-DD o YYYY/MM/DD
+    let match = fecha.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/);
+    if (match) {
+      y = Number(match[1]);
+      m = Number(match[2]);
+      d = Number(match[3]);
+    }
+
+    // Formato compacto SQL exportado: YYYYMMDD
+    if (!match && /^\d{8}$/.test(fecha)) {
+      y = Number(fecha.slice(0, 4));
+      m = Number(fecha.slice(4, 6));
+      d = Number(fecha.slice(6, 8));
+      match = true;
+    }
+
+    // Formato argentino: DD/MM/YYYY o DD-MM-YYYY
+    if (!match) {
+      match = fecha.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
+      if (match) {
+        d = Number(match[1]);
+        m = Number(match[2]);
+        y = Number(match[3]);
+      }
+    }
+
+    if (!match || !y || !m || !d) return null;
+
+    const date = new Date(y, m - 1, d);
+    if (date.getFullYear() !== y || date.getMonth() !== m - 1 || date.getDate() !== d) return null;
+
+    return { y, m, d, date };
+  }
+
+  function formatFechaAR(parsed) {
+    if (!parsed) return 'Sin fecha';
+    return `${String(parsed.d).padStart(2, '0')}/${String(parsed.m).padStart(2, '0')}/${parsed.y}`;
+  }
+
   // Función para obtener la clave de tanda (fecha del pedido Tango)
   function tandaKey(p) {
-    const f = clean(p.fecha_pedi) || clean(p.fecha_factura) || clean(p.fecha_orden) || '';
-    if (!f || f === '00000000' || f === '01/01/1800') return 'Sin fecha';
-    // Normalizar distintos formatos: YYYYMMDD, DD/MM/YYYY, YYYY-MM-DD
-    if (/^\d{8}$/.test(f)) {
-      return `${f.slice(6,8)}/${f.slice(4,6)}/${f.slice(0,4)}`;
-    }
-    return f.slice(0, 10); // tomar solo la parte de fecha
+    const parsed = parseFechaLocal(p.fecha_pedi) || parseFechaLocal(p.fecha_factura) || parseFechaLocal(p.fecha_orden);
+    return formatFechaAR(parsed);
   }
 
   const DIAS = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
   function tandaLabel(key) {
     if (key === 'Sin fecha') return '— Sin fecha de emisión —';
-    // Intentar parsear para mostrar día de semana
     const parts = key.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
     if (parts) {
-      const d = new Date(parseInt(parts[3]), parseInt(parts[2])-1, parseInt(parts[1]));
-      if (!isNaN(d)) return `${DIAS[d.getDay()].toUpperCase()}  ${key}`;
+      const d = new Date(Number(parts[3]), Number(parts[2]) - 1, Number(parts[1]));
+      if (!isNaN(d.getTime())) return `${DIAS[d.getDay()].toUpperCase()}  ${key}`;
     }
     return key;
   }
