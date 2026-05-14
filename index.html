@@ -352,6 +352,46 @@ button:active { transform: scale(.97); }
   margin-left: 5px;
 }
 
+.cliente-btn {
+  background: rgba(0,170,255,.12);
+  color: var(--blue-bright);
+  border: 1px solid rgba(0,170,255,.30);
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 5px;
+}
+.cliente-btn:hover { background: rgba(0,170,255,.22); border-color: rgba(0,170,255,.55); }
+.cliente-btn:disabled { opacity: .35; cursor: not-allowed; }
+.cliente-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  color: var(--blue-bright);
+  background: rgba(0,170,255,.12);
+  border: 1px solid rgba(0,170,255,.30);
+  border-radius: 999px;
+  padding: 2px 7px;
+  font-size: 10.5px;
+  font-weight: 700;
+  margin-left: 5px;
+}
+.delivery-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.delivery-grid .full { grid-column: 1 / -1; }
+.delivery-grid label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.delivery-grid input, .delivery-grid textarea { width: 100%; }
+
 /* Botón DESMARCAR */
 .btn-deselect {
   background: rgba(129,140,248,.12);
@@ -926,6 +966,56 @@ textarea:focus { border-color: var(--blue-bright); box-shadow: var(--glow); }
   </div>
 </div>
 
+<div class="modal-overlay" id="modalEntregaCliente" onclick="overlayEntregaClienteClick(event)">
+  <div class="modal-card" style="max-width:720px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="ecTitle">Entregar pedido al cliente</div>
+        <div class="modal-sub" id="ecSub">Confirmación de retiro en sucursal / entrega final</div>
+      </div>
+      <button class="modal-close" onclick="closeEntregaClienteModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="info-card" style="margin-bottom:14px;">
+        <h3>Datos del pedido</h3>
+        <div class="field"><b>Pedido</b><span id="ecPedido">—</span></div>
+        <div class="field"><b>Orden web</b><span id="ecOrden">—</span></div>
+        <div class="field"><b>Remito</b><span id="ecRemito">—</span></div>
+        <div class="field"><b>Cliente</b><span id="ecCliente">—</span></div>
+      </div>
+      <div class="delivery-grid">
+        <div>
+          <label for="ecPersona">Persona que retira / recibe *</label>
+          <input id="ecPersona" placeholder="Nombre y apellido" />
+        </div>
+        <div>
+          <label for="ecDni">DNI / Documento *</label>
+          <input id="ecDni" placeholder="Documento" />
+        </div>
+        <div>
+          <label for="ecTelefono">Teléfono</label>
+          <input id="ecTelefono" placeholder="Opcional" />
+        </div>
+        <div>
+          <label for="ecUsuario">Usuario sucursal / operador</label>
+          <input id="ecUsuario" value="OPERADOR_SUCURSAL" />
+        </div>
+        <div class="full">
+          <label for="ecObs">Observación</label>
+          <textarea id="ecObs" placeholder="Ej.: retira titular, retira familiar, se verifica documento, observación adicional..."></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions" style="grid-template-columns:1fr auto">
+      <div class="cell-muted">Esta acción registra la entrega final al cliente. Requiere endpoint GAS <b>api=entregado_cliente</b>.</div>
+      <div style="display:flex;gap:8px;align-self:end">
+        <button class="btn-ghost" onclick="closeEntregaClienteModal()">Cancelar</button>
+        <button class="btn-primary" onclick="confirmarEntregaCliente()">Confirmar entrega</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 // ─── CONFIGURACION ────────────────────────────────────────────────────────────
 // GAS que lee pedidos_cd_pendientes.json desde Google Drive y lo sirve como JSONP
@@ -982,7 +1072,7 @@ function estadoRemitoLabel(v) {
 }
 
 function ocaEligible(p) {
-  return estadoRemito(p) === 'REMITIDO' && clean(p.n_remito) !== '';
+  return estadoRemito(p) === 'REMITIDO' && clean(p.n_remito) !== '' && !remitoEmpiezaConX(p);
 }
 
 function entregadoOca(p) {
@@ -990,8 +1080,17 @@ function entregadoOca(p) {
   return v === 'S' || v === 'SI' || v === 'TRUE' || v === '1';
 }
 
+function entregadoCliente(p) {
+  const v = clean(p.entregado_cliente || p.entregado_al_cliente || p.entrega_cliente).toUpperCase();
+  return v === 'S' || v === 'SI' || v === 'TRUE' || v === '1';
+}
+
 function entregaOcaEligible(p) {
   return ocaEligible(p) && !entregadoOca(p);
+}
+
+function entregaClienteEligible(p) {
+  return estadoRemito(p) === 'REMITIDO' && clean(p.n_remito) !== '' && !remitoEmpiezaConX(p) && !entregadoCliente(p);
 }
 
 function toggleOcaSelect(id, checked) {
@@ -1198,7 +1297,7 @@ function setModo(modo) {
 }
 
 function updateModeCounters() {
-  const baseVisible = pedidos.filter(p => esTalonario234(p));
+  const baseVisible = pedidos.filter(p => esTalonario234(p) && !remitoEmpiezaConX(p));
   const total = baseVisible.length;
   const factPend = baseVisible.filter(p => estadoRemito(p) === 'FACTURADO_PENDIENTE_REMITIR').length;
   const pendFact = baseVisible.filter(p => estadoRemito(p) === 'PENDIENTE_FACTURAR').length;
@@ -1247,7 +1346,7 @@ async function loadData() {
 
     const canales = [...new Set(
       pedidos
-        .filter(p => esTalonario234(p))
+        .filter(p => esTalonario234(p) && !remitoEmpiezaConX(p))
         .map(p => clean(p.usuario_tienda_vendedor))
         .filter(Boolean)
     )].sort();
@@ -1287,6 +1386,7 @@ function render() {
 
   const filtered = pedidos.filter(p => {
     if (!esTalonario234(p)) return false;
+    if (remitoEmpiezaConX(p)) return false;
     const blob = [p.nro_pedido,p.order_id_tienda,p.order_nro_tienda,p.cliente_entrega,
       p.email_comprador,p.localidad_entrega,p.direccion_entrega,
       p.telefono1_entrega,p.telefono_movil_wa,p.usuario_tienda_vendedor].join(' ').toLowerCase();
@@ -1448,7 +1548,8 @@ function render() {
       <td>
         <input class="oca-check" type="checkbox" ${selectedOca.has(String(p.id_gva21)) ? 'checked' : ''} ${ocaEligible(p) ? '' : 'disabled'} title="${ocaEligible(p) ? 'Seleccionar para CSV OCA' : 'OCA requiere pedido remitido con número de remito'}" onchange="toggleOcaSelect('${p.id_gva21}', this.checked)">
         <button class="btn-detail" onclick="openModal('${p.id_gva21}')">Ver</button>
-        ${entregadoOca(p) ? '<span class="entregado-pill">✓ OCA</span>' : `<button class="entrega-btn" ${entregaOcaEligible(p) ? '' : 'disabled'} title="${entregaOcaEligible(p) ? 'Marcar entregado a OCA y notificar por email' : 'Requiere REMITIDO con remito'}" onclick="marcarEntregadoOca('${p.id_gva21}')">Entregado</button>`}
+        ${entregadoOca(p) ? '<span class="entregado-pill">✓ OCA</span>' : `<button class="entrega-btn" ${entregaOcaEligible(p) ? '' : 'disabled'} title="${entregaOcaEligible(p) ? 'Marcar entregado a OCA y notificar por email' : 'Requiere REMITIDO con remito'}" onclick="marcarEntregadoOca('${p.id_gva21}')">OCA</button>`}
+        ${entregadoCliente(p) ? '<span class="cliente-pill">✓ Cliente</span>' : `<button class="cliente-btn" ${entregaClienteEligible(p) ? '' : 'disabled'} title="${entregaClienteEligible(p) ? 'Confirmar entrega final al cliente' : 'Requiere REMITIDO con remito no interno X'}" onclick="openEntregaClienteModal('${p.id_gva21}')">Cliente</button>`}
       </td>
       <td><div class="cell-pedido">${clean(p.nro_pedido)}</div><div class="cell-ref">ID ${clean(p.id_gva21)}</div></td>
       <td><div class="cell-pedido">#${clean(p.order_id_tienda)}</div><div class="cell-ref">${clean(p.order_nro_tienda)}</div></td>
@@ -1534,6 +1635,10 @@ function openModal(id) {
           <div class="record-line"><b>Estado Tango</b>${clean(p.estado_tango)}</div>
           <div class="record-line"><b>Entregado a OCA</b>${entregadoOca(p) ? 'Sí' : 'No'}</div>
           <div class="record-line"><b>Fecha entrega OCA</b>${clean(p.fecha_entregado_oca) || '—'}</div>
+          <div class="record-line"><b>Entregado cliente</b>${entregadoCliente(p) ? 'Sí' : 'No'}</div>
+          <div class="record-line"><b>Fecha entrega cliente</b>${clean(p.fecha_entregado_cliente) || '—'}</div>
+          <div class="record-line"><b>Retiró / recibió</b>${clean(p.persona_retira) || '—'}</div>
+          <div class="record-line"><b>DNI retiro</b>${clean(p.dni_retira) || '—'}</div>
           <div class="record-line"><b>Fecha pedido</b>${clean(p.fecha_pedi) || '—'}</div>
           <div class="record-line"><b>Hora</b>${clean(p.hora) || '—'}</div>
           <div class="record-line"><b>Tienda</b>${clean(p.tienda) || '—'}</div>
@@ -1585,7 +1690,7 @@ function saveEstado() {
   render();
 }
 
-document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') { closeModal(); closeEntregaClienteModal(); } });
 loadData();
 </script>
 </body>
