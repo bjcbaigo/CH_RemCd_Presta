@@ -1168,6 +1168,19 @@ function ocaLimit(v, max) { return normalizarTextoOca(v).slice(0, max); }
 function documentoDestinatarioOca(p) {
   return ocaLimit(clean(p.order_id_tienda) || clean(p.ORDER_ID_TIENDA) || clean(p.order_nro_tienda) || clean(p.ORDER_NRO_TIENDA), 30);
 }
+// Número de Remito OCA: debe salir con las letras/referencia del pedido, no con el remito numérico de Tango.
+function numeroRemitoOca(p) {
+  return ocaLimit(
+    clean(p.order_nro_tienda) ||
+    clean(p.ORDER_NRO_TIENDA) ||
+    clean(p.referencia_pedido) ||
+    clean(p.REFERENCE) ||
+    clean(p.reference) ||
+    clean(p.order_id_tienda) ||
+    clean(p.ORDER_ID_TIENDA),
+    30
+  );
+}
 function splitNombreApellido(nombreCompleto) {
   const n = normalizarTextoOca(nombreCompleto);
   if (!n) return { apellido: '', nombre: '' };
@@ -1248,7 +1261,7 @@ function buildOcaRow(p, index) {
     '24',                                                                      // Paquete - Largo [cm]
     '53',                                                                      // Paquete - Ancho [cm]
     formatOcaMoney(p.total_orden || p.total_pedi_con_impuestos || p.importe_factura), // Valor Asegurado
-    clean(p.n_remito) || ordenCanal,                                             // Número de Remito
+    numeroRemitoOca(p),                                                        // Número de Remito (letras/referencia del pedido)
     '402901',                                                                  // Número de Operativa
     retiroEmail,                                                               // Retiro - Email
     '1',                                                                       // Retiro - Dias
