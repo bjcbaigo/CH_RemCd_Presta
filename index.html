@@ -1164,19 +1164,31 @@ function limpiarFiltros() {
 
 function normalizarTextoOca(v) { return clean(v).replace(/\s+/g, ' ').trim(); }
 function ocaLimit(v, max) { return normalizarTextoOca(v).slice(0, max); }
-// Destinatario - Documento: referencia alfabética/letras del pedido (ej.: GDDFWXYOD), no el número.
+// Destinatario - Documento: número de orden de la tienda/canal.
+function refAlfabeticaPedidoOca(p) {
+  // QuickShip/OCA requiere la referencia alfabética de la orden, no el número interno.
+  // Ejemplo válido: BTBPHMNAE. Ejemplo inválido para este campo: 41639.
+  const candidatos = [
+    p.order_nro_tienda,
+    p.ORDER_NRO_TIENDA,
+    p.orden_canal,
+    p.ORDEN_CANAL,
+    p.referencia_orden,
+    p.REFERENCIA_ORDEN,
+    p.numero_orden_web,
+    p.NUMERO_ORDEN_WEB
+  ];
+
+  for (const c of candidatos) {
+    const v = clean(c);
+    if (v && /[A-Za-zÁÉÍÓÚÑáéíóúñ]/.test(v) && !/^\d+$/.test(v)) {
+      return ocaLimit(v.toUpperCase(), 30);
+    }
+  }
+  return '';
+}
 function documentoDestinatarioOca(p) {
-  return ocaLimit(
-    clean(p.order_nro_tienda) ||
-    clean(p.ORDER_NRO_TIENDA) ||
-    clean(p.referencia_orden) ||
-    clean(p.REFERENCIA_ORDEN) ||
-    clean(p.order_ref) ||
-    clean(p.ORDER_REF) ||
-    clean(p.order_id_tienda) ||
-    clean(p.ORDER_ID_TIENDA),
-    30
-  );
+  return refAlfabeticaPedidoOca(p);
 }
 function splitNombreApellido(nombreCompleto) {
   const n = normalizarTextoOca(nombreCompleto);
@@ -1216,7 +1228,7 @@ function encodeWindows1252(str) {
 function buildOcaRow(p, index) {
   const nom = splitNombreApellido(p.cliente_entrega);
   const dir = splitCalleNumero(p.direccion_entrega);
-  const ordenCanal = clean(p.order_id_tienda) || clean(p.ORDER_ID_TIENDA) || clean(p.orden_canal) || clean(p.numero_orden_web) || clean(p.order_nro_tienda) || clean(p.nro_pedido) || clean(p.n_remito);
+  const refLetras = refAlfabeticaPedidoOca(p);
   const retiroContacto = ocaLimit('3482649113', 30); // Retiro - Contacto (max 30)
   const retiroTel      = '3482649113';               // Retiro - Teléfono
   const retiroEmail    = '3483-550342';              // Retiro - Email
@@ -1233,7 +1245,7 @@ function buildOcaRow(p, index) {
     nom.apellido,                                                              // Destinatario - Apellido
     nom.nombre,                                                                // Destinatario - Nombre
     'dni',                                                                     // Destinatario - TipoDocumento
-    documentoDestinatarioOca(p),                                               // Destinatario - Documento (ref alfabetica)
+    refLetras,                                                                 // Destinatario - Documento (ref alfabetica)
     ocaLimit(dir.calle, 30),                                                   // Destinatario - Calle (max 30)
     dir.numero,                                                                // Destinatario - Número
     '0',                                                                       // Destinatario - Piso
@@ -1258,7 +1270,7 @@ function buildOcaRow(p, index) {
     '24',                                                                      // Paquete - Largo [cm]
     '53',                                                                      // Paquete - Ancho [cm]
     formatOcaMoney(p.total_orden || p.total_pedi_con_impuestos || p.importe_factura), // Valor Asegurado
-    documentoDestinatarioOca(p) || ordenCanal,                                    // Número de Remito (letras del pedido)
+    refLetras,                                                                 // Número de Remito (misma ref alfabetica)
     '402901',                                                                  // Número de Operativa
     retiroEmail,                                                               // Retiro - Email
     '1',                                                                       // Retiro - Dias
@@ -1276,6 +1288,16 @@ function generarCsvOcaSeleccionados() {
   const invalidos = seleccionados.filter(p => !ocaEligible(p));
   if (invalidos.length) {
     alert('Hay pedidos seleccionados que no cumplen la regla OCA: deben estar REMITIDOS y tener número de remito.');
+    return;
+  }
+
+  const sinReferenciaAlfabetica = seleccionados.filter(p => !refAlfabeticaPedidoOca(p));
+  if (sinReferenciaAlfabetica.length) {
+    const detalle = sinReferenciaAlfabetica
+      .slice(0, 8)
+      .map(p => clean(p.nro_pedido) || clean(p.id_gva21))
+      .join(', ');
+    alert('No se genera el CSV: hay pedidos sin referencia alfabética de orden para Destinatario - Documento / Número de Remito. Revisar ORDER_NRO_TIENDA. Pedidos: ' + detalle);
     return;
   }
 
