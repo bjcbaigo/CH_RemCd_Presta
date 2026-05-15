@@ -1164,18 +1164,15 @@ function limpiarFiltros() {
 
 function normalizarTextoOca(v) { return clean(v).replace(/\s+/g, ' ').trim(); }
 function ocaLimit(v, max) { return normalizarTextoOca(v).slice(0, max); }
-// Destinatario - Documento: número de orden de la tienda/canal.
+// Destinatario - Documento: referencia alfabética/letras del pedido (ej.: GDDFWXYOD), no el número.
 function documentoDestinatarioOca(p) {
-  return ocaLimit(clean(p.order_id_tienda) || clean(p.ORDER_ID_TIENDA) || clean(p.order_nro_tienda) || clean(p.ORDER_NRO_TIENDA), 30);
-}
-// Número de Remito OCA: debe salir con las letras/referencia del pedido, no con el remito numérico de Tango.
-function numeroRemitoOca(p) {
   return ocaLimit(
     clean(p.order_nro_tienda) ||
     clean(p.ORDER_NRO_TIENDA) ||
-    clean(p.referencia_pedido) ||
-    clean(p.REFERENCE) ||
-    clean(p.reference) ||
+    clean(p.referencia_orden) ||
+    clean(p.REFERENCIA_ORDEN) ||
+    clean(p.order_ref) ||
+    clean(p.ORDER_REF) ||
     clean(p.order_id_tienda) ||
     clean(p.ORDER_ID_TIENDA),
     30
@@ -1261,7 +1258,7 @@ function buildOcaRow(p, index) {
     '24',                                                                      // Paquete - Largo [cm]
     '53',                                                                      // Paquete - Ancho [cm]
     formatOcaMoney(p.total_orden || p.total_pedi_con_impuestos || p.importe_factura), // Valor Asegurado
-    numeroRemitoOca(p),                                                        // Número de Remito (letras/referencia del pedido)
+    documentoDestinatarioOca(p) || ordenCanal,                                    // Número de Remito (letras del pedido)
     '402901',                                                                  // Número de Operativa
     retiroEmail,                                                               // Retiro - Email
     '1',                                                                       // Retiro - Dias
